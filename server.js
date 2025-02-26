@@ -133,6 +133,7 @@ async function fetchLinkedInProfile(accessToken) {
             projection: '(id,firstName,lastName,profilePicture(displayImage~:playableStreams),headline)'
         }
     });
+    console.log('LinkedIn Profile Data:', response.data);
     return response.data;
 }
 
@@ -154,7 +155,6 @@ async function fetchLinkedInProfile(accessToken) {
 
 // Secure token storage in database (example using MongoDB)
 const mongoose = require('mongoose');
-require('dotenv').config(); // For loading environment variables
 
 // MongoDB connection string - ideally stored in an environment variable
 const MONGODB_URI = process.env.MONGODB_URI
