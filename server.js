@@ -10,7 +10,7 @@ const config = {
         clientId: process.env.CLIENT_ID,
         clientSecret: process.env.CLIENT_SECRET,
         redirectUri: 'http://localhost:3000/auth/linkedin/callback',
-        scope: ['r_liteprofile', 'r_emailaddress']
+        scope: 'openid profile email' // String format instead of array
     }
 };
 
