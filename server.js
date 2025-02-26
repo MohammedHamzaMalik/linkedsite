@@ -123,7 +123,7 @@ app.use((err, req, res, next) => {
 
 // Function to fetch LinkedIn profile data
 async function fetchLinkedInProfile(accessToken) {
-    const response = await axios.get('https://api.linkedin.com/v2/me', {
+    const response = await axios.get('https://api.linkedin.com/v2/userinfo', {
         headers: {
             'Authorization': `Bearer ${accessToken}`,
             'cache-control': 'no-cache',
