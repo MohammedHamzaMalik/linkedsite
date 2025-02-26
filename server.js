@@ -82,15 +82,15 @@ app.get('/auth/linkedin/callback', async (req, res) => {
         }
 
         // Exchange authorization code for access token
-        const tokenResponse = await axios.post('https://www.linkedin.com/oauth/v2/accessToken', null, {
-            params: {
+        const tokenResponse = await axios.post('https://www.linkedin.com/oauth/v2/accessToken', querystring.stringify({
+            // params: {
                 grant_type: 'authorization_code',
-                code,
+                code: req.query.code,
                 redirect_uri: config.linkedinAuth.redirectUri,
                 client_id: config.linkedinAuth.clientId,
                 client_secret: config.linkedinAuth.clientSecret
-            }
-        });
+            // }
+        }));
 
         const accessToken = tokenResponse.data.access_token;
 
