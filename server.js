@@ -3,6 +3,12 @@ const express = require('express');
 const axios = require('axios');
 const crypto = require('crypto');
 const session = require('express-session');
+require('dotenv').config(); // For loading environment variables
+
+
+const debug = (message, data) => {
+    console.log(`DEBUG: ${message}`, data || '');
+};
 
 // Configuration
 const config = {
