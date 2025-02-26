@@ -53,6 +53,24 @@ app.get('/auth/linkedin', (req, res) => {
     res.redirect(authorizationUrl.toString());
 });
 
+// Root route
+app.get('/', (req, res) => {
+    res.send(`
+        <html>
+            <head><title>LinkedIn OAuth Test</title></head>
+            <body>
+                <h1>LinkedIn OAuth Test</h1>
+                <p>Click the button below to test the OAuth flow:</p>
+                <a href="/auth/linkedin" style="display: inline-block; padding: 10px 20px; background-color: #0077B5; color: white; text-decoration: none; border-radius: 4px;">
+                    Login with LinkedIn
+                </a>
+            </body>
+        </html>
+    `);  });
+
+
+const querystring = require('querystring');
+
 // Handle LinkedIn OAuth callback
 app.get('/auth/linkedin/callback', async (req, res) => {
     try {
