@@ -29,23 +29,21 @@ function generateState() {
     return crypto.randomBytes(16).toString('hex');
 }
 
-// Root route
-app.get('/', (req, res) => {
-    res.send('LinkedIn OAuth server is running! Go to /auth/linkedin to begin authentication.');
-  });
-
-// Route to initiate LinkedIn OAuth flow
+// Route to /auth/linkedin
 app.get('/auth/linkedin', (req, res) => {
     const state = generateState();
     req.session.state = state;
+    debug('Session state set to', state);
 
     const authorizationUrl = new URL('https://www.linkedin.com/oauth/v2/authorization');
     authorizationUrl.searchParams.append('response_type', 'code');
     authorizationUrl.searchParams.append('client_id', config.linkedinAuth.clientId);
     authorizationUrl.searchParams.append('redirect_uri', config.linkedinAuth.redirectUri);
     authorizationUrl.searchParams.append('state', state);
-    authorizationUrl.searchParams.append('scope', config.linkedinAuth.scope.join(' '));
+    authorizationUrl.searchParams.append('scope', config.linkedinAuth.scope); // Use as is, not joined
 
+    console.log('Redirecting to:', authorizationUrl.toString());
+    debug('Authorization URL', authorizationUrl.toString());
     res.redirect(authorizationUrl.toString());
 });
 
