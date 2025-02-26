@@ -47,7 +47,7 @@ app.get('/auth/linkedin', (req, res) => {
     authorizationUrl.searchParams.append('redirect_uri', config.linkedinAuth.redirectUri);
     authorizationUrl.searchParams.append('state', state);
     authorizationUrl.searchParams.append('scope', config.linkedinAuth.scope); // Use as is, not joined
-
+    
     console.log('Redirecting to:', authorizationUrl.toString());
     debug('Authorization URL', authorizationUrl.toString());
     res.redirect(authorizationUrl.toString());
@@ -75,7 +75,7 @@ const querystring = require('querystring');
 app.get('/auth/linkedin/callback', async (req, res) => {
     try {
         const { code, state } = req.query;
-
+        
         // Verify state parameter to prevent CSRF attacks
         if (state !== req.session.state) {
             return res.status(400).send('Invalid state parameter');
