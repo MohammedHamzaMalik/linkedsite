@@ -75,7 +75,7 @@ const querystring = require('querystring');
 app.get('/auth/linkedin/callback', async (req, res) => {
     try {
         const { code, state } = req.query;
-        
+
         // Verify state parameter to prevent CSRF attacks
         if (state !== req.session.state) {
             return res.status(400).send('Invalid state parameter');
@@ -128,9 +128,6 @@ async function fetchLinkedInProfile(accessToken) {
             'Authorization': `Bearer ${accessToken}`,
             'cache-control': 'no-cache',
             'X-Restli-Protocol-Version': '2.0.0'
-        },
-        params: {
-            projection: '(id,firstName,lastName,profilePicture(displayImage~:playableStreams),headline)'
         }
     });
     console.log('LinkedIn Profile Data:', response.data);
