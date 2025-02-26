@@ -99,14 +99,14 @@ app.get('/auth/linkedin/callback', async (req, res) => {
 
         // Fetch user profile data
         const profileData = await fetchLinkedInProfile(accessToken);
-        const emailData = await fetchLinkedInEmail(accessToken);
+        // const emailData = await fetchLinkedInEmail(accessToken);
 
         // Store user data or create/update user in your database
         // ...
 
         res.json({
             profile: profileData,
-            email: emailData
+            // email: emailData
         });
 
     } catch (error) {
@@ -137,20 +137,20 @@ async function fetchLinkedInProfile(accessToken) {
 }
 
 // Function to fetch LinkedIn email address
-async function fetchLinkedInEmail(accessToken) {
-    const response = await axios.get('https://api.linkedin.com/v2/emailAddress', {
-        headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'cache-control': 'no-cache',
-            'X-Restli-Protocol-Version': '2.0.0'
-        },
-        params: {
-            'q': 'members',
-            'projection': '(elements*(handle~))'
-        }
-    });
-    return response.data;
-}
+// async function fetchLinkedInEmail(accessToken) {
+//     const response = await axios.get('https://api.linkedin.com/v2/emailAddress', {
+//         headers: {
+//             'Authorization': `Bearer ${accessToken}`,
+//             'cache-control': 'no-cache',
+//             'X-Restli-Protocol-Version': '2.0.0'
+//         },
+//         params: {
+//             'q': 'members',
+//             'projection': '(elements*(handle~))'
+//         }
+//     });
+//     return response.data;
+// }
 
 // Secure token storage in database (example using MongoDB)
 const mongoose = require('mongoose');
