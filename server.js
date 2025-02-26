@@ -196,3 +196,10 @@ TokenSchema.pre('save', function(next) {
 const Token = mongoose.model('Token', TokenSchema);
 
 module.exports = { Token };
+
+// Start the server
+const PORT = process.env.PORT;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
+
