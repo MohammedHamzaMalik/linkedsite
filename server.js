@@ -7,8 +7,8 @@ const session = require('express-session');
 // Configuration
 const config = {
     linkedinAuth: {
-        clientId: CLIENT_ID,
-        clientSecret: CLIENT_SECRET,
+        clientId: process.env.CLIENT_ID,
+        clientSecret: process.env.CLIENT_SECRET,
         redirectUri: 'http://localhost:3000/auth/linkedin/callback',
         scope: ['r_liteprofile', 'r_emailaddress']
     }
@@ -121,6 +121,50 @@ async function fetchLinkedInEmail(accessToken) {
 
 // Secure token storage in database (example using MongoDB)
 const mongoose = require('mongoose');
+require('dotenv').config(); // For loading environment variables
+
+// MongoDB connection string - ideally stored in an environment variable
+const MONGODB_URI = process.env.MONGODB_URI
+
+// Connection options
+const options = {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+    // If you need other options, you can add them here
+};
+
+// Connect to MongoDB
+mongoose.connect(MONGODB_URI, options)
+  .then(() => {
+    console.log('Connected to MongoDB successfully');
+    console.log(`Database: ${mongoose.connection.name}`);
+  })
+  .catch((err) => {
+    console.error('MongoDB connection error:', err.message);
+    // You might want to exit the process in case of connection failure
+    process.exit(1);
+  });
+
+// Optional: Handle connection events
+mongoose.connection.on('connected', () => {
+    console.log('Mongoose connected to DB');
+});
+
+mongoose.connection.on('error', (err) => {
+    console.error('Mongoose connection error:', err.message);
+});
+
+mongoose.connection.on('disconnected', () => {
+    console.log('Mongoose disconnected');
+});
+
+// Graceful shutdown handling
+process.on('SIGINT', async () => {
+    await mongoose.connection.close();
+    console.log('Mongoose disconnected through app termination');
+    process.exit(0);
+  });
+
 
 const TokenSchema = new mongoose.Schema({
     userId: { type: mongoose.Schema.Types.ObjectId, required: true },
@@ -150,3 +194,5 @@ TokenSchema.pre('save', function(next) {
 });
 
 const Token = mongoose.model('Token', TokenSchema);
+
+module.exports = { Token };
