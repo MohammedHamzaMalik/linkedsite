@@ -29,6 +29,11 @@ function generateState() {
     return crypto.randomBytes(16).toString('hex');
 }
 
+// Root route
+app.get('/', (req, res) => {
+    res.send('LinkedIn OAuth server is running! Go to /auth/linkedin to begin authentication.');
+  });
+
 // Route to initiate LinkedIn OAuth flow
 app.get('/auth/linkedin', (req, res) => {
     const state = generateState();
