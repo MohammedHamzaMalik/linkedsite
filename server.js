@@ -4,7 +4,9 @@ const axios = require('axios');
 const crypto = require('crypto');
 const session = require('express-session');
 require('dotenv').config(); // For loading environment variables
-
+// Import any additional dependencies
+const cors = require('cors');
+const { URL } = require('url');
 
 const debug = (message, data) => {
     console.log(`DEBUG: ${message}`, data || '');
@@ -34,6 +36,13 @@ app.use(session({
 function generateState() {
     return crypto.randomBytes(16).toString('hex');
 }
+
+// Enable CORS for your React frontend
+const corsOptions = {
+    origin: process.env.FRONTEND_URL,
+    credentials: true
+  };
+app.use(cors(corsOptions));
 
 // Route to /auth/linkedin
 app.get('/auth/linkedin', (req, res) => {
