@@ -123,10 +123,10 @@ app.get('/auth/linkedin/callback', async (req, res) => {
         // Store user data or create/update user in your database
         // ...
 
-        res.json({
-            profile: profileData,
-            // email: emailData
-        });
+        // res.json({
+        //     profile: profileData,
+        //     // email: emailData
+        // });
 
     } catch (error) {
         console.error('LinkedIn OAuth Error:', error);
