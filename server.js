@@ -1,138 +1,232 @@
-// Required dependencies
+// 1. Required dependencies
 const express = require('express');
 const axios = require('axios');
 const crypto = require('crypto');
 const session = require('express-session');
-require('dotenv').config(); // For loading environment variables
-// Import any additional dependencies
 const cors = require('cors');
 const { URL } = require('url');
+const mongoose = require('mongoose');
+const { v4: uuidv4 } = require('uuid');
+const querystring = require('querystring');
+require('dotenv').config();
 
+// 2. Debug helper
 const debug = (message, data) => {
     console.log(`DEBUG: ${message}`, data || '');
 };
 
-// Configuration
+// 3. Configuration
 const config = {
     linkedinAuth: {
         clientId: process.env.CLIENT_ID,
         clientSecret: process.env.CLIENT_SECRET,
         redirectUri: 'http://localhost:3000/auth/linkedin/callback',
-        scope: 'openid profile email' // String format instead of array
+        scope: 'openid profile email'
     }
 };
 
-// Initialize Express app
+// 4. MongoDB Schema Definitions
+const websiteSchema = new mongoose.Schema({
+    websiteId: {
+        type: String,
+        required: true,
+        unique: true
+    },
+    htmlContent: {
+        type: String,
+        required: true
+    },
+    linkedinProfileId: {
+        type: String,
+        required: true
+    },
+    createdAt: {
+        type: Date,
+        default: Date.now,
+        expires: 60 * 60 * 24 * 7
+    }
+});
+
+const TokenSchema = new mongoose.Schema({
+    userId: { type: String, required: true }, // Changed from ObjectId to String
+    accessToken: { type: String, required: true },
+    expiresAt: { type: Date, required: true }
+}, { 
+    timestamps: true 
+});
+
+// 5. Create Models
+const Website = mongoose.model('Website', websiteSchema);
+const Token = mongoose.model('Token', TokenSchema);
+
+// 6. Database Connection
+mongoose.connect(process.env.MONGODB_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true
+}).then(() => {
+    console.log('Connected to MongoDB successfully');
+}).catch((err) => {
+    console.error('MongoDB connection error:', err.message);
+    process.exit(1);
+});
+
+// 7. Initialize Express app
 const app = express();
 
-// Configure session middleware
+// 8. Middleware
 app.use(session({
     secret: crypto.randomBytes(32).toString('hex'),
     resave: false,
     saveUninitialized: true
 }));
 
-// Generate random state parameter for CSRF protection
+app.use(cors({
+    origin: process.env.FRONTEND_URL,
+    credentials: true
+}));
+
+// 9. Helper Functions
 function generateState() {
     return crypto.randomBytes(16).toString('hex');
 }
 
-// Enable CORS for your React frontend
-const corsOptions = {
-    origin: process.env.FRONTEND_URL,
-    credentials: true
-  };
-app.use(cors(corsOptions));
+async function fetchLinkedInProfile(accessToken) {
+    try {
+        const response = await axios.get('https://api.linkedin.com/v2/userinfo', {
+            headers: {
+                'Authorization': `Bearer ${accessToken}`,
+                'cache-control': 'no-cache',
+                'X-Restli-Protocol-Version': '2.0.0'
+            }
+        });
 
-// Route to /auth/linkedin
+        if (!response.data || !response.data.sub) {
+            throw new Error('Invalid LinkedIn profile data');
+        }
+
+        console.log('LinkedIn Profile Data:', response.data);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching LinkedIn profile:', error);
+        throw error;
+    }
+}
+
+async function storeWebsite(htmlContent, linkedinProfileId) {
+    try {
+        if (!htmlContent || !linkedinProfileId) {
+            throw new Error('Missing required parameters for website storage');
+        }
+
+        const websiteId = uuidv4();
+        const website = new Website({
+            websiteId,
+            htmlContent,
+            linkedinProfileId: linkedinProfileId.toString()
+        });
+        
+        await website.save();
+        return websiteId;
+    } catch (error) {
+        console.error('Error storing website:', error);
+        throw error;
+    }
+}
+
+async function getWebsiteHtml(websiteId) {
+    try {
+        const website = await Website.findOne({ websiteId });
+        return website ? website.htmlContent : null;
+    } catch (error) {
+        console.error('Error retrieving website:', error);
+        throw error;
+    }
+}
+
+// 10. Routes
 app.get('/auth/linkedin', (req, res) => {
     const state = generateState();
     req.session.state = state;
-    debug('Session state set to', state);
-
+    
     const authorizationUrl = new URL('https://www.linkedin.com/oauth/v2/authorization');
     authorizationUrl.searchParams.append('response_type', 'code');
     authorizationUrl.searchParams.append('client_id', config.linkedinAuth.clientId);
     authorizationUrl.searchParams.append('redirect_uri', config.linkedinAuth.redirectUri);
     authorizationUrl.searchParams.append('state', state);
-    authorizationUrl.searchParams.append('scope', config.linkedinAuth.scope); // Use as is, not joined
+    authorizationUrl.searchParams.append('scope', config.linkedinAuth.scope);
     
-    console.log('Redirecting to:', authorizationUrl.toString());
     debug('Authorization URL', authorizationUrl.toString());
     res.redirect(authorizationUrl.toString());
 });
 
-// Root route
-app.get('/', (req, res) => {
-    res.send(`
-        <html>
-            <head><title>LinkedIn OAuth Test</title></head>
-            <body>
-                <h1>LinkedIn OAuth Test</h1>
-                <p>Click the button below to test the OAuth flow:</p>
-                <a href="/auth/linkedin" style="display: inline-block; padding: 10px 20px; background-color: #0077B5; color: white; text-decoration: none; border-radius: 4px;">
-                    Login with LinkedIn
-                </a>
-            </body>
-        </html>
-    `);  });
-
-
-const querystring = require('querystring');
-
-// Handle LinkedIn OAuth callback
 app.get('/auth/linkedin/callback', async (req, res) => {
     try {
         const { code, state } = req.query;
 
-        // Verify state parameter to prevent CSRF attacks
         if (state !== req.session.state) {
             return res.status(400).send('Invalid state parameter');
         }
 
-        // Exchange authorization code for access token
-        const tokenResponse = await axios.post('https://www.linkedin.com/oauth/v2/accessToken', querystring.stringify({
-            // params: {
+        const tokenResponse = await axios.post('https://www.linkedin.com/oauth/v2/accessToken', 
+            querystring.stringify({
                 grant_type: 'authorization_code',
-                code: req.query.code,
+                code: code,
                 redirect_uri: config.linkedinAuth.redirectUri,
                 client_id: config.linkedinAuth.clientId,
                 client_secret: config.linkedinAuth.clientSecret
-            // }
-        }));
+            })
+        );
 
         const accessToken = tokenResponse.data.access_token;
-
-        // Store access token securely in session
         req.session.linkedinAccessToken = accessToken;
 
-        // Fetch user profile data
         const profileData = await fetchLinkedInProfile(accessToken);
-        // const emailData = await fetchLinkedInEmail(accessToken);
-
-        // Generate website HTML based on LinkedIn data
-        const websiteHtml = generatePersonalWebsite(profileData);
-
-        // Redirect to frontend with the website HTML as a query parameter
-        const frontendUrl = process.env.FRONTEND_URL;
-        const redirectUrl = new URL(`${frontendUrl}/website`);
-        redirectUrl.searchParams.append('websiteHtml', encodeURIComponent(websiteHtml));
         
-        return res.redirect(redirectUrl.toString());
+        if (!profileData.sub) {
+            throw new Error('LinkedIn profile ID not found');
+        }
 
-        // Store user data or create/update user in your database
-        // ...
+        const websiteHtml = generatePersonalWebsite(profileData);
+        const websiteId = await storeWebsite(websiteHtml, profileData.sub);
 
-        // res.json({
-        //     profile: profileData,
-        //     // email: emailData
-        // });
+        const frontendUrl = process.env.FRONTEND_URL;
+        return res.redirect(`${frontendUrl}/website/${websiteId}`);
 
     } catch (error) {
         console.error('LinkedIn OAuth Error:', error);
-        res.status(500).send('Authentication failed');
+        return res.status(500).send('Authentication failed: ' + error.message);
     }
 });
+
+app.get('/website/:websiteId', async (req, res) => {
+    try {
+        const htmlContent = await getWebsiteHtml(req.params.websiteId);
+        if (!htmlContent) {
+            return res.status(404).send('Website not found');
+        }
+        res.setHeader('Content-Type', 'text/html');
+        res.send(htmlContent);
+    } catch (error) {
+        res.status(500).send('Error retrieving website');
+    }
+});
+
+// 11. Error Handling
+app.use((err, req, res, next) => {
+    console.error('Server Error:', err);
+    res.status(500).json({
+        error: 'Internal Server Error',
+        message: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
+});
+
+// 12. Start Server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+});
+
+// Keep your existing generatePersonalWebsite function as is
 
 // Function to generate the personal website HTML
 function generatePersonalWebsite(profileData) {
@@ -257,123 +351,3 @@ function generatePersonalWebsite(profileData) {
     }
   }
   
-
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-    console.error('Error:', err.stack);
-    res.status(500).send('Something broke!');
-  });
-
-// Function to fetch LinkedIn profile data
-async function fetchLinkedInProfile(accessToken) {
-    const response = await axios.get('https://api.linkedin.com/v2/userinfo', {
-        headers: {
-            'Authorization': `Bearer ${accessToken}`,
-            'cache-control': 'no-cache',
-            'X-Restli-Protocol-Version': '2.0.0'
-        }
-    });
-    console.log('LinkedIn Profile Data:', response.data);
-    return response.data;
-}
-
-// Function to fetch LinkedIn email address
-// async function fetchLinkedInEmail(accessToken) {
-//     const response = await axios.get('https://api.linkedin.com/v2/emailAddress', {
-//         headers: {
-//             'Authorization': `Bearer ${accessToken}`,
-//             'cache-control': 'no-cache',
-//             'X-Restli-Protocol-Version': '2.0.0'
-//         },
-//         params: {
-//             'q': 'members',
-//             'projection': '(elements*(handle~))'
-//         }
-//     });
-//     return response.data;
-// }
-
-// Secure token storage in database (example using MongoDB)
-const mongoose = require('mongoose');
-
-// MongoDB connection string - ideally stored in an environment variable
-const MONGODB_URI = process.env.MONGODB_URI
-
-// Connection options
-const options = {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    // If you need other options, you can add them here
-};
-
-// Connect to MongoDB
-mongoose.connect(MONGODB_URI, options)
-  .then(() => {
-    console.log('Connected to MongoDB successfully');
-    console.log(`Database: ${mongoose.connection.name}`);
-  })
-  .catch((err) => {
-    console.error('MongoDB connection error:', err.message);
-    // You might want to exit the process in case of connection failure
-    process.exit(1);
-  });
-
-// Optional: Handle connection events
-mongoose.connection.on('connected', () => {
-    console.log('Mongoose connected to DB');
-});
-
-mongoose.connection.on('error', (err) => {
-    console.error('Mongoose connection error:', err.message);
-});
-
-mongoose.connection.on('disconnected', () => {
-    console.log('Mongoose disconnected');
-});
-
-// Graceful shutdown handling
-process.on('SIGINT', async () => {
-    await mongoose.connection.close();
-    console.log('Mongoose disconnected through app termination');
-    process.exit(0);
-  });
-
-
-const TokenSchema = new mongoose.Schema({
-    userId: { type: mongoose.Schema.Types.ObjectId, required: true },
-    accessToken: { type: String, required: true },
-    expiresAt: { type: Date, required: true }
-}, { 
-    timestamps: true 
-});
-
-function encryptToken(token) {
-    // **THIS IS NOT SECURE FOR PRODUCTION - JUST FOR LOCAL TESTING**
-    return Buffer.from(token).toString('base64');
-}
-
-function decryptToken(encryptedToken) {
-    // **THIS IS NOT SECURE FOR PRODUCTION - JUST FOR LOCAL TESTING**
-    return Buffer.from(encryptedToken, 'base64').toString('utf-8');
-}
-
-// Encrypt tokens before saving
-TokenSchema.pre('save', function(next) {
-    if (this.isModified('accessToken')) {
-        // Use your preferred encryption method
-        this.accessToken = encryptToken(this.accessToken);
-    }
-    next();
-});
-
-const Token = mongoose.model('Token', TokenSchema);
-
-module.exports = { Token };
-
-// Start the server
-const PORT = process.env.PORT;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
-
