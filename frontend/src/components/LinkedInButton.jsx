@@ -1,3 +1,4 @@
+// frontend/src/components/LinkedInButton.jsx 
 import { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 

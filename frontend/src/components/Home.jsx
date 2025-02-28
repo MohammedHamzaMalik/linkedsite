@@ -1,3 +1,4 @@
+// frontend/src/components/Home.jsx
 import { useState } from 'react';
 import LinkedInButton from './LinkedInButton';
 
