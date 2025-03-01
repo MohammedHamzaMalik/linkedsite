@@ -74,6 +74,7 @@ const TokenSchema = new mongoose.Schema({
 // 5. Create Models
 const Website = mongoose.model('Website', websiteSchema);
 const Token = mongoose.model('Token', TokenSchema);
+const User = mongoose.model('User', userSchema); // User Model
 
 // 6. Database Connection
 mongoose.connect(process.env.MONGODB_URI, {
