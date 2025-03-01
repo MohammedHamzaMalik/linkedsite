@@ -203,8 +203,30 @@ app.get('/auth/linkedin/callback', async (req, res) => {
             throw new Error('LinkedIn profile ID not found');
         }
 
+        const linkedinProfileId = profileData.sub; // LinkedIn Profile ID as userId
+        let user = await User.findOne({ userId: linkedinProfileId });
+
+        if (!user) {
+            // Create a new user if not found
+            user = new User({
+                userId: linkedinProfileId, // Use LinkedIn Profile ID as userId
+                name: profileData.name,       // Use name from LinkedIn profile
+                email: profileData.email      // Use email from LinkedIn profile (if available)
+            });
+            await user.save();
+            console.log(`New user created: ${user.userId}`);
+        } else {
+            console.log(`User logged in: ${user.userId}`);
+        }
+
+        req.session.userId = user.userId; // Set session userId to LinkedIn Profile ID
+
         const websiteHtml = generatePersonalWebsite(profileData);
-        const websiteId = await storeWebsite(websiteHtml, profileData.sub);
+        const websiteId = await storeWebsite(websiteHtml, linkedinProfileId);
+
+        // **Correction: Update User document to store websiteId**
+        user.websites.push(websiteId); // Push the new websiteId to the websites array
+        await user.save(); // Save the updated user document
 
         const frontendUrl = process.env.FRONTEND_URL;
         return res.redirect(`${frontendUrl}/website/${websiteId}`);
