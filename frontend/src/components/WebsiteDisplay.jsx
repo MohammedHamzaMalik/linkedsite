@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import DOMPurify from 'dompurify';
+import createDOMPurify from 'dompurify'; // Updated import
 import PropTypes from 'prop-types';
 import LoadingSpinner from './common/LoadingSpinner';
 
