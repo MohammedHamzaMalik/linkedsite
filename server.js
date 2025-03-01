@@ -48,6 +48,21 @@ const websiteSchema = new mongoose.Schema({
     }
 });
 
+const userSchema = new mongoose.Schema({ // created User Schema
+  userId: { // userId will be the LinkedIn Profile ID
+      type: String,
+      required: true,
+      unique: true
+  },
+  name: { type: String }, // User's full name
+  email: { type: String }, // User's email (optional, may not always be available)
+  websites: [{ type: String, ref: 'Website' }], // Array of website IDs associated with the user
+  createdAt: {
+      type: Date,
+      default: Date.now
+  }
+});
+
 const TokenSchema = new mongoose.Schema({
     userId: { type: String, required: true }, // Changed from ObjectId to String
     accessToken: { type: String, required: true },
