@@ -4,13 +4,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import DOMPurify from 'dompurify';
 import PropTypes from 'prop-types';
+import LoadingSpinner from './common/LoadingSpinner';
 
-// Import components
-const LoadingSpinner = () => (
-  <div className="flex justify-center items-center min-h-screen">
-    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-  </div>
-);
+// Initialize DOMPurify
+const DOMPurify = createDOMPurify(window);
 
 const ErrorMessage = ({ message }) => (
   <div className="flex justify-center items-center min-h-screen">

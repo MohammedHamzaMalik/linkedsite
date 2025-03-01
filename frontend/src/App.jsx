@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Suspense } from 'react';
 import Home from './components/Home';
 import WebsiteDisplay from './components/WebsiteDisplay';
-import LoadingSpinner from './components/LoadingSpinner';
+import LoadingSpinner from './components/common/LoadingSpinner';
 
 function App() {
   return (
