@@ -93,9 +93,14 @@ const app = express();
 
 // 8. Middleware
 app.use(session({
-    secret: crypto.randomBytes(32).toString('hex'),
+    secret: process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex'),
     resave: false,
-    saveUninitialized: true
+    saveUninitialized: false,
+    cookie: {
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
 }));
 
 app.use(cors({
