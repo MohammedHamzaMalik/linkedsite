@@ -9,6 +9,7 @@ const { URL } = require('url');
 const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
 const querystring = require('querystring');
+const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 // 2. Debug helper
@@ -100,6 +101,11 @@ app.use(session({
 app.use(cors({
     origin: process.env.FRONTEND_URL,
     credentials: true
+}));
+
+app.use(rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100 // limit each IP to 100 requests per windowMs
 }));
 
 // 9. Helper Functions
