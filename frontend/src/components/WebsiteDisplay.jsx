@@ -105,14 +105,14 @@ function WebsiteDisplay() {
   
   return (
     <div className="website-container">
-      <div 
-        dangerouslySetInnerHTML={{ 
-          __html: DOMPurify.sanitize(websiteHtml, {
-            ALLOWED_TAGS: ['div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'a', 'img', 'strong', 'em', 'br'],
-            ALLOWED_ATTR: ['href', 'src', 'class', 'alt', 'title']
-          })
-        }}
-      />
+      <div className="website-content">
+        <div 
+          className="bg-white rounded-lg shadow-md p-6"
+          dangerouslySetInnerHTML={{ 
+            __html: DOMPurify.sanitize(websiteHtml)
+          }}
+        />
+      </div>
     </div>
   );
 }
