@@ -1,6 +1,6 @@
 // src/components/WebsiteDisplay.js
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import createDOMPurify from 'dompurify'; // Updated import
 import PropTypes from 'prop-types';
@@ -116,22 +116,34 @@ function WebsiteDisplay() {
   if (error) return <ErrorMessage message={error} />;
   
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="flex justify-end p-4">
-            <button
-                onClick={handleLogout}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
-            >
-                Logout
-            </button>
+    <div className="website-container">
+      <nav className="bg-white shadow-md py-4 mb-8">
+        <div className="max-w-4xl mx-auto px-4 flex justify-between items-center">
+          <Link 
+            to="/my-websites"
+            className="text-blue-600 hover:text-blue-700 font-medium"
+          >
+            My Websites
+          </Link>
         </div>
-        <div 
-          className="bg-white rounded-lg shadow-md p-6"
-          dangerouslySetInnerHTML={{ 
-            __html: DOMPurify.sanitize(websiteHtml)
-          }}
-        />
+      </nav>
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-4xl mx-auto px-4 py-8">
+          <div className="flex justify-end p-4">
+              <button
+                  onClick={handleLogout}
+                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50"
+              >
+                  Logout
+              </button>
+          </div>
+          <div 
+            className="bg-white rounded-lg shadow-md p-6"
+            dangerouslySetInnerHTML={{ 
+              __html: DOMPurify.sanitize(websiteHtml)
+            }}
+          />
+        </div>
       </div>
     </div>
   );
