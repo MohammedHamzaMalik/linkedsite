@@ -272,6 +272,42 @@ app.get('/auth/logout', (req, res) => {
   });
 });
 
+// Add new route for fetching user websites
+app.get('/user/websites', async (req, res) => {
+  try {
+    // Check if user is authenticated via LinkedIn
+    if (!req.session.linkedinAccessToken) {
+      return res.status(401).json({ 
+        error: 'Unauthorized',
+        message: 'Please login with LinkedIn first'
+      });
+    }
+
+    // Get profile data from session
+    const profileData = await fetchLinkedInProfile(req.session.linkedinAccessToken);
+    
+    if (!profileData || !profileData.sub) {
+      return res.status(401).json({ 
+        error: 'Invalid profile',
+        message: 'Could not retrieve LinkedIn profile'
+      });
+    }
+
+    // Find websites by LinkedIn profile ID
+    const websites = await Website.find({ 
+      linkedinProfileId: profileData.sub 
+    }).sort({ createdAt: -1 });
+
+    res.json(websites);
+  } catch (error) {
+    console.error('Error fetching user websites:', error);
+    res.status(500).json({ 
+      error: 'Server error',
+      message: 'Failed to fetch websites'
+    });
+  }
+});
+
 // 11. Error Handling
 app.use((err, req, res, next) => {
     console.error('Server Error:', err);
