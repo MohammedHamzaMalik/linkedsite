@@ -261,6 +261,17 @@ app.get('/website/:websiteId', async (req, res) => {
     }
 });
 
+// New Logout Route
+app.get('/auth/logout', (req, res) => {
+  req.session.destroy(err => {
+      if (err) {
+          console.error('Session destroy error:', err);
+          return res.status(500).send('Logout failed');
+      }
+      res.status(200).json({ message: 'Logout successful' }); // Send JSON success response
+  });
+});
+
 // 11. Error Handling
 app.use((err, req, res, next) => {
     console.error('Server Error:', err);
