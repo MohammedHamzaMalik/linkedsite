@@ -40,7 +40,8 @@ const websiteSchema = new mongoose.Schema({
     },
     linkedinProfileId: {
         type: String,
-        required: true
+        required: true,
+        index: true
     },
     createdAt: {
         type: Date,
