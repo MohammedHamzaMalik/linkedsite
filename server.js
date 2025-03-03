@@ -29,26 +29,37 @@ const config = {
 
 // 4. MongoDB Schema Definitions
 const websiteSchema = new mongoose.Schema({
-    websiteId: {
-        type: String,
-        required: true,
-        unique: true
-    },
-    htmlContent: {
-        type: String,
-        required: true
-    },
-    linkedinProfileId: {
-        type: String,
-        required: true,
-        index: true
-    },
-    createdAt: {
-        type: Date,
-        default: Date.now,
-        expires: 60 * 60 * 24 * 7
+  websiteId: {
+    type: String,
+    required: true,
+    unique: true
+  },
+  websiteName: {
+    type: String,
+    trim: true,
+    maxLength: 100,
+    required: true, // Make name required
+    default: function() {
+      return `My Website ${new Date().toLocaleDateString()}`; // Default name
     }
+  },
+  htmlContent: {
+    type: String,
+    required: true
+  },
+  linkedinProfileId: {
+    type: String,
+    required: true,
+    index: true
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
 });
+
+// Add compound index for unique names per user
+websiteSchema.index({ linkedinProfileId: 1, websiteName: 1 }, { unique: true });
 
 const userSchema = new mongoose.Schema({ // created User Schema
   userId: { // userId will be the LinkedIn Profile ID
