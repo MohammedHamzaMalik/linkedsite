@@ -309,6 +309,60 @@ app.get('/user/websites', async (req, res) => {
   }
 });
 
+// Delete website endpoint
+app.delete('/user/websites/:websiteId', async (req, res) => {
+  try {
+    // Check authentication
+    if (!req.session.linkedinAccessToken) {
+      return res.status(401).json({ 
+        error: 'Unauthorized',
+        message: 'Please login with LinkedIn first'
+      });
+    }
+
+    const { websiteId } = req.params;
+    
+    // Get profile data from session
+    const profileData = await fetchLinkedInProfile(req.session.linkedinAccessToken);
+    
+    if (!profileData || !profileData.sub) {
+      return res.status(401).json({ 
+        error: 'Invalid profile',
+        message: 'Could not verify user identity'
+      });
+    }
+
+    // Find website
+    const website = await Website.findOne({ websiteId });
+
+    if (!website) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: 'Website not found'
+      });
+    }
+
+    // Check ownership
+    if (website.linkedinProfileId !== profileData.sub) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: 'You do not have permission to delete this website'
+      });
+    }
+
+    // Delete website
+    await Website.deleteOne({ websiteId });
+
+    res.json({ message: 'Website deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting website:', error);
+    res.status(500).json({ 
+      error: 'Server error',
+      message: 'Failed to delete website'
+    });
+  }
+});
+
 // 11. Error Handling
 app.use((err, req, res, next) => {
     console.error('Server Error:', err);
