@@ -8,6 +8,9 @@ function UserWebsites() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [deletingWebsites, setDeletingWebsites] = useState(new Set());
+  const [renameWebsiteId, setRenameWebsiteId] = useState(null);
+  const [newWebsiteName, setNewWebsiteName] = useState('');
+  const [renamingStatus, setRenamingStatus] = useState({ loading: false, error: null });
   const [deleteStatus, setDeleteStatus] = useState({ error: null, success: null });
   const navigate = useNavigate();
 
@@ -97,6 +100,47 @@ function UserWebsites() {
     }
   };
 
+  const handleRenameWebsite = async (websiteId) => {
+    if (!newWebsiteName.trim()) {
+      return;
+    }
+
+    setRenamingStatus({ loading: true, error: null });
+
+    try {
+      const response = await axios.put(
+        `${import.meta.env.VITE_BACKEND_URL}/user/websites/${websiteId}`,
+        { newName: newWebsiteName },
+        { withCredentials: true }
+      );
+
+      setWebsites(prevWebsites => 
+        prevWebsites.map(website => 
+          website.websiteId === websiteId 
+            ? { ...website, websiteName: response.data.website.websiteName }
+            : website
+        )
+      );
+
+      showNotification('Website renamed successfully');
+      handleCancelRename();
+
+    } catch (err) {
+      console.error('Error renaming website:', err);
+      setRenamingStatus({
+        loading: false,
+        error: err.response?.data?.message || 'Failed to rename website'
+      });
+      showNotification(err.response?.data?.message || 'Failed to rename website', 'error');
+    }
+  };
+
+  const handleCancelRename = () => {
+    setRenameWebsiteId(null);
+    setNewWebsiteName('');
+    setRenamingStatus({ loading: false, error: null });
+  };
+
   if (loading) {
     return <LoadingSpinner />;
   }
@@ -164,14 +208,53 @@ function UserWebsites() {
               >
                 <div className="flex justify-between items-center">
                   <div>
-                    <p className="text-gray-600 mb-2">
-                      Created: {new Date(website.createdAt).toLocaleDateString()}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      ID: {website.websiteId}
-                    </p>
+                    {renameWebsiteId === website.websiteId ? (
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="text"
+                          value={newWebsiteName}
+                          onChange={(e) => setNewWebsiteName(e.target.value)}
+                          placeholder="Enter new name"
+                          className="border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          disabled={renamingStatus.loading}
+                        />
+                        <button
+                          onClick={() => handleRenameWebsite(website.websiteId)}
+                          disabled={renamingStatus.loading || !newWebsiteName.trim()}
+                          className="text-green-600 hover:text-green-700"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={handleCancelRename}
+                          className="text-gray-600 hover:text-gray-700"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-gray-600 mb-2">
+                          {website.websiteName || `Website ${website.websiteId}`}
+                        </p>
+                        <p className="text-sm text-gray-500">
+                          Created: {new Date(website.createdAt).toLocaleDateString()}
+                        </p>
+                      </>
+                    )}
                   </div>
                   <div className="flex space-x-4">
+                    {renameWebsiteId !== website.websiteId && (
+                      <button
+                        onClick={() => {
+                          setRenameWebsiteId(website.websiteId);
+                          setNewWebsiteName(website.websiteName || '');
+                        }}
+                        className="text-blue-600 hover:text-blue-700"
+                      >
+                        Rename
+                      </button>
+                    )}
                     <Link
                       to={`/website/${website.websiteId}`}
                       className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
