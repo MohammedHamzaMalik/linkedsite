@@ -378,6 +378,120 @@ app.delete('/user/websites/:websiteId', async (req, res) => {
   }
 });
 
+// Added PUT route for renaming website
+app.put('/user/websites/:websiteId', async (req, res) => {
+  try {
+    if (!req.session.linkedinAccessToken) {
+      return res.status(401).json({ 
+        error: 'Unauthorized',
+        message: 'Please login with LinkedIn first'
+      });
+    }
+
+    const { websiteId } = req.params;
+    
+    if (!req.body || (typeof req.body.newName === 'undefined' && typeof req.body.websiteName === 'undefined')) {
+      return res.status(400).json({
+        error: 'Invalid input',
+        message: 'Website name is required'
+      });
+    }
+
+    const websiteName = (req.body.newName || req.body.websiteName).trim();
+
+    // Validate name length
+    if (typeof websiteName !== 'string' || websiteName.length < 3 || websiteName.length > 100) {
+      return res.status(400).json({
+        error: 'Invalid input',
+        message: 'Website name must be between 3 and 100 characters'
+      });
+    }
+
+    // Sanitize website name
+    const sanitizedName = websiteName
+      .replace(/[^\w\s-]/g, '') // Remove special characters except spaces and hyphens
+      .trim();
+
+    if (!sanitizedName) {
+      return res.status(400).json({
+        error: 'Invalid input',
+        message: 'Website name contains invalid characters'
+      });
+    }
+
+    const profileData = await fetchLinkedInProfile(req.session.linkedinAccessToken);
+    
+    if (!profileData?.sub) {
+      return res.status(401).json({ 
+        error: 'Invalid profile',
+        message: 'Could not verify user identity'
+      });
+    }
+
+    // Check if name already exists for this user
+    const existingWebsite = await Website.findOne({
+      linkedinProfileId: profileData.sub,
+      websiteName: sanitizedName,
+      websiteId: { $ne: websiteId } // Exclude current website
+    });
+
+    if (existingWebsite) {
+      return res.status(409).json({
+        error: 'Duplicate name',
+        message: 'You already have a website with this name'
+      });
+    }
+
+    // Find and update website
+    const website = await Website.findOneAndUpdate(
+      { 
+        websiteId,
+        linkedinProfileId: profileData.sub 
+      },
+      { 
+        websiteName: sanitizedName,
+        updatedAt: new Date()
+      },
+      { 
+        new: true,
+        runValidators: true
+      }
+    );
+
+    if (!website) {
+      return res.status(404).json({
+        error: 'Not found',
+        message: 'Website not found or permission denied'
+      });
+    }
+
+    res.json({ 
+      message: 'Website renamed successfully',
+      website: {
+        websiteId: website.websiteId,
+        websiteName: website.websiteName,
+        createdAt: website.createdAt
+      }
+    });
+
+  } catch (error) {
+    console.error('Error renaming website:', error);
+    
+    // Handle MongoDB duplicate key error
+    if (error.code === 11000) {
+      return res.status(409).json({
+        error: 'Duplicate name',
+        message: 'You already have a website with this name'
+      });
+    }
+
+    res.status(500).json({ 
+      error: 'Server error',
+      message: 'Failed to rename website'
+    });
+  }
+});
+
 // 11. Error Handling
 app.use((err, req, res, next) => {
     console.error('Server Error:', err);
