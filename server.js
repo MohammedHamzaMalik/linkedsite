@@ -125,6 +125,10 @@ app.use(rateLimit({
     max: 100 // limit each IP to 100 requests per windowMs
 }));
 
+// 1. Add body-parser middleware after other middleware configurations
+const bodyParser = require('express').json();
+app.use(bodyParser);
+
 // 9. Helper Functions
 function generateState() {
     return crypto.randomBytes(16).toString('hex');
