@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import axios from 'axios';
@@ -33,14 +33,31 @@ function UserWebsites({ hideGenerateButton = false }) {
   const [deleteStatus, setDeleteStatus] = useState({ error: null, success: null });
   const navigate = useNavigate();
 
+  const showNotification = useCallback((message, type = 'success') => {
+    const notification = document.createElement('div');
+    notification.className = `fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 ${
+      type === 'success' ? 'bg-green-500' : 'bg-red-500'
+    } text-white`;
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    setTimeout(() => {
+      if (document.body.contains(notification)) {
+        document.body.removeChild(notification);
+      }
+    }, 3000);
+  }, []);
+
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchWebsites = async () => {
       try {
         const response = await axios.get(
           `${import.meta.env.VITE_BACKEND_URL}/user/websites`,
           { 
             withCredentials: true,
-            timeout: 5000
+            timeout: 5000,
+            signal: controller.signal
           }
         );
 
@@ -48,6 +65,11 @@ function UserWebsites({ hideGenerateButton = false }) {
           setWebsites(response.data);
         }
       } catch (err) {
+        if (axios.isCancel(err)) {
+          console.log('Request cancelled');
+          return;
+        }
+
         console.error('Error fetching websites:', err);
         
         if (err.response?.status === 401) {
@@ -64,17 +86,11 @@ function UserWebsites({ hideGenerateButton = false }) {
     };
 
     fetchWebsites();
-  }, [navigate]);
 
-  const showNotification = (message, type = 'success') => {
-    const notification = document.createElement('div');
-    notification.className = `fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg z-50 ${
-      type === 'success' ? 'bg-green-500' : 'bg-red-500'
-    } text-white`;
-    notification.textContent = message;
-    document.body.appendChild(notification);
-    setTimeout(() => notification.remove(), 3000);
-  };
+    return () => {
+      controller.abort();
+    };
+  }, [navigate]);
 
   const handleDeleteWebsite = async (websiteId) => {
     if (!window.confirm('Are you sure you want to delete this website?')) {
@@ -121,6 +137,7 @@ function UserWebsites({ hideGenerateButton = false }) {
 
   const handleRenameWebsite = async (websiteId) => {
     if (!newWebsiteName.trim()) {
+      showNotification('Website name cannot be empty', 'error');
       return;
     }
 
@@ -129,7 +146,7 @@ function UserWebsites({ hideGenerateButton = false }) {
     try {
       const response = await axios.put(
         `${import.meta.env.VITE_BACKEND_URL}/user/websites/${websiteId}`,
-        { newName: newWebsiteName },
+        { websiteName: newWebsiteName.trim() },
         { withCredentials: true }
       );
 
@@ -154,15 +171,18 @@ function UserWebsites({ hideGenerateButton = false }) {
     }
   };
 
-  const handleCancelRename = () => {
+  const handleCancelRename = useCallback(() => {
     setRenameWebsiteId(null);
     setNewWebsiteName('');
     setRenamingStatus({ loading: false, error: null });
-  };
+  }, []);
 
-  if (loading) {
-    return <LoadingSpinner />;
-  }
+  const startRename = useCallback((websiteId, currentName) => {
+    setRenameWebsiteId(websiteId);
+    setNewWebsiteName(currentName);
+  }, []);
+
+  if (loading) return <LoadingSpinner />;
 
   if (error) {
     return (
@@ -183,7 +203,7 @@ function UserWebsites({ hideGenerateButton = false }) {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
+      <div className="max-w-6xl mx-auto px-4">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">My Websites</h1>
           {!hideGenerateButton && (
@@ -196,15 +216,13 @@ function UserWebsites({ hideGenerateButton = false }) {
           )}
         </div>
         
-        {deleteStatus.error && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-600">{deleteStatus.error}</p>
-          </div>
-        )}
-
-        {deleteStatus.success && (
-          <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-            <p className="text-green-600">{deleteStatus.success}</p>
+        {(deleteStatus.error || deleteStatus.success) && (
+          <div className={`mb-4 p-4 rounded-lg ${
+            deleteStatus.error ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'
+          }`}>
+            <p className={deleteStatus.error ? 'text-red-600' : 'text-green-600'}>
+              {deleteStatus.error || deleteStatus.success}
+            </p>
           </div>
         )}
         
@@ -221,61 +239,83 @@ function UserWebsites({ hideGenerateButton = false }) {
             </Link>
           </div>
         ) : (
-          <div className="grid gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {websites.map((website) => (
               <div 
                 key={website.websiteId}
-                className="bg-white rounded-lg shadow-md p-6"
+                className="bg-white rounded-lg shadow-md overflow-hidden"
               >
-                <div className="flex justify-between items-center">
-                  <div>
-                    {renameWebsiteId === website.websiteId ? (
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="text"
-                          value={newWebsiteName}
-                          onChange={(e) => setNewWebsiteName(e.target.value)}
-                          placeholder="Enter new name"
-                          className="border rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                          disabled={renamingStatus.loading}
-                        />
+                <div className="relative pb-[56.25%] bg-gray-50">
+                  {website.thumbnail ? (
+                    <img
+                      src={website.thumbnail}
+                      alt={website.websiteName || 'Website preview'}
+                      className="absolute top-0 left-0 w-full h-full object-cover"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.style.display = 'none';
+                        e.target.parentElement.appendChild(
+                          document.createElement('div')
+                        ).outerHTML = PlaceholderThumbnail();
+                      }}
+                    />
+                  ) : (
+                    <div className="absolute top-0 left-0 w-full h-full">
+                      <PlaceholderThumbnail />
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-4">
+                  {renameWebsiteId === website.websiteId ? (
+                    <div className="mb-4">
+                      <input
+                        type="text"
+                        value={newWebsiteName}
+                        onChange={(e) => setNewWebsiteName(e.target.value)}
+                        className="w-full px-3 py-2 border rounded-md"
+                        placeholder="Enter new name"
+                        disabled={renamingStatus.loading}
+                      />
+                      {renamingStatus.error && (
+                        <p className="text-red-500 text-sm mt-1">{renamingStatus.error}</p>
+                      )}
+                      <div className="flex space-x-2 mt-2">
                         <button
                           onClick={() => handleRenameWebsite(website.websiteId)}
-                          disabled={renamingStatus.loading || !newWebsiteName.trim()}
-                          className="text-green-600 hover:text-green-700"
+                          disabled={renamingStatus.loading}
+                          className="bg-blue-600 text-white px-3 py-1 rounded text-sm"
                         >
-                          Save
+                          {renamingStatus.loading ? 'Saving...' : 'Save'}
                         </button>
                         <button
                           onClick={handleCancelRename}
-                          className="text-gray-600 hover:text-gray-700"
+                          disabled={renamingStatus.loading}
+                          className="text-gray-600 px-3 py-1 rounded text-sm"
                         >
                           Cancel
                         </button>
                       </div>
-                    ) : (
-                      <>
-                        <p className="text-gray-600 mb-2">
-                          {website.websiteName || `Website ${website.websiteId}`}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          Created: {new Date(website.createdAt).toLocaleDateString()}
-                        </p>
-                      </>
-                    )}
-                  </div>
-                  <div className="flex space-x-4">
-                    {renameWebsiteId !== website.websiteId && (
+                    </div>
+                  ) : (
+                    <div className="flex justify-between items-center mb-2">
+                      <h3 className="font-semibold text-gray-900">
+                        {website.websiteName || `Website ${website.websiteId.slice(0, 8)}`}
+                      </h3>
                       <button
-                        onClick={() => {
-                          setRenameWebsiteId(website.websiteId);
-                          setNewWebsiteName(website.websiteName || '');
-                        }}
-                        className="text-blue-600 hover:text-blue-700"
+                        onClick={() => startRename(website.websiteId, website.websiteName)}
+                        className="text-gray-600 hover:text-gray-900"
                       >
-                        Rename
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
                       </button>
-                    )}
+                    </div>
+                  )}
+                  <p className="text-sm text-gray-500 mb-4">
+                    Created: {new Date(website.createdAt).toLocaleDateString()}
+                  </p>
+                  <div className="flex justify-between items-center">
                     <Link
                       to={`/website/${website.websiteId}`}
                       className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors"
@@ -285,19 +325,9 @@ function UserWebsites({ hideGenerateButton = false }) {
                     <button
                       onClick={() => handleDeleteWebsite(website.websiteId)}
                       disabled={deletingWebsites.has(website.websiteId)}
-                      className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                      className="text-red-600 hover:text-red-700 disabled:opacity-50"
                     >
-                      {deletingWebsites.has(website.websiteId) ? (
-                        <>
-                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                          </svg>
-                          <span>Deleting...</span>
-                        </>
-                      ) : (
-                        'Delete'
-                      )}
+                      {deletingWebsites.has(website.websiteId) ? 'Deleting...' : 'Delete'}
                     </button>
                   </div>
                 </div>
@@ -312,6 +342,10 @@ function UserWebsites({ hideGenerateButton = false }) {
 
 UserWebsites.propTypes = {
   hideGenerateButton: PropTypes.bool
+};
+
+UserWebsites.defaultProps = {
+  hideGenerateButton: false
 };
 
 export default UserWebsites;
