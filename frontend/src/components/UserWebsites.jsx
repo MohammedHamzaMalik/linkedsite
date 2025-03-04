@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import PropTypes from 'prop-types';
 import axios from 'axios';
 import LoadingSpinner from './common/LoadingSpinner';
 
-function UserWebsites() {
+function UserWebsites({ hideGenerateButton = false }) {
   const [websites, setWebsites] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -167,12 +168,14 @@ function UserWebsites() {
       <div className="max-w-4xl mx-auto px-4">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">My Websites</h1>
-          <Link 
-            to="/"
-            className="text-blue-600 hover:text-blue-700 font-medium"
-          >
-            Generate New Website
-          </Link>
+          {!hideGenerateButton && (
+            <Link 
+              to="/dashboard"
+              className="text-blue-600 hover:text-blue-700 font-medium"
+            >
+              Back to Dashboard
+            </Link>
+          )}
         </div>
         
         {deleteStatus.error && (
@@ -288,5 +291,9 @@ function UserWebsites() {
     </div>
   );
 }
+
+UserWebsites.propTypes = {
+  hideGenerateButton: PropTypes.bool
+};
 
 export default UserWebsites;
