@@ -61,18 +61,26 @@ const websiteSchema = new mongoose.Schema({
 // Add compound index for unique names per user
 websiteSchema.index({ linkedinProfileId: 1, websiteName: 1 }, { unique: true });
 
-const userSchema = new mongoose.Schema({ // created User Schema
-  userId: { // userId will be the LinkedIn Profile ID
-      type: String,
-      required: true,
-      unique: true
+const userSchema = new mongoose.Schema({
+  linkedinId: { // Changed from userId to linkedinId to match usage
+    type: String,
+    required: true,
+    unique: true
   },
-  name: { type: String }, // User's full name
-  email: { type: String }, // User's email (optional, may not always be available)
-  websites: [{ type: String, ref: 'Website' }], // Array of website IDs associated with the user
+  name: { 
+    type: String,
+    required: true 
+  },
+  email: { 
+    type: String 
+  },
+  websites: [{ 
+    type: String, 
+    ref: 'Website' 
+  }],
   createdAt: {
-      type: Date,
-      default: Date.now
+    type: Date,
+    default: Date.now
   }
 });
 
