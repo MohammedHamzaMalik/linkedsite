@@ -323,7 +323,7 @@ app.get('/user/websites', async (req, res) => {
     // Find websites by LinkedIn profile ID
     const websites = await Website.find({ 
       linkedinProfileId: profileData.sub 
-    }).sort({ createdAt: -1 });
+    }).select('websiteId websiteName thumbnail createdAt').sort({ createdAt: -1 });
 
     res.json(websites);
   } catch (error) {
