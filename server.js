@@ -11,6 +11,7 @@ const { v4: uuidv4 } = require('uuid');
 const querystring = require('querystring');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
+const nodeHtmlToImage = require('node-html-to-image');
 
 // 2. Debug helper
 const debug = (message, data) => {
@@ -46,6 +47,10 @@ const websiteSchema = new mongoose.Schema({
   htmlContent: {
     type: String,
     required: true
+  },
+  thumbnail: {
+    type: String, // Store base64 encoded image
+    default: null
   },
   linkedinProfileId: {
     type: String,
