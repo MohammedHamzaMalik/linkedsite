@@ -543,6 +543,32 @@ app.post('/user/websites/generate', async (req, res) => {
   }
 });
 
+// Add logout route after other routes
+app.post('/auth/logout', (req, res) => {
+  try {
+    // Clear session
+    req.session.destroy((err) => {
+      if (err) {
+        console.error('Error destroying session:', err);
+        return res.status(500).json({ 
+          error: 'Server error',
+          message: 'Failed to logout' 
+        });
+      }
+      
+      // Clear cookies
+      res.clearCookie('connect.sid');
+      res.json({ message: 'Logged out successfully' });
+    });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({ 
+      error: 'Server error',
+      message: 'Failed to logout' 
+    });
+  }
+});
+
 // 11. Error Handling
 app.use((err, req, res, next) => {
     console.error('Server Error:', err);
