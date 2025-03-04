@@ -169,25 +169,22 @@ async function fetchLinkedInProfile(accessToken) {
     }
 }
 
-async function storeWebsite(htmlContent, linkedinProfileId) {
-    try {
-        if (!htmlContent || !linkedinProfileId) {
-            throw new Error('Missing required parameters for website storage');
-        }
-
-        const websiteId = uuidv4();
-        const website = new Website({
-            websiteId,
-            htmlContent,
-            linkedinProfileId: linkedinProfileId.toString()
-        });
-        
-        await website.save();
-        return websiteId;
-    } catch (error) {
-        console.error('Error storing website:', error);
-        throw error;
-    }
+async function storeWebsite(htmlContent, linkedinProfileId, thumbnail = null, websiteName) {
+  try {
+    const websiteId = uuidv4();
+    const website = new Website({
+      websiteId,
+      htmlContent,
+      linkedinProfileId,
+      thumbnail,
+      websiteName
+    });
+    await website.save();
+    return websiteId;
+  } catch (error) {
+    console.error('Error storing website:', error);
+    throw error;
+  }
 }
 
 async function getWebsiteHtml(websiteId) {
