@@ -493,6 +493,48 @@ app.put('/user/websites/:websiteId', async (req, res) => {
   }
 });
 
+// Add new route for website generation
+app.post('/user/websites/generate', async (req, res) => {
+  try {
+    if (!req.session.linkedinAccessToken) {
+      return res.status(401).json({ 
+        error: 'Unauthorized',
+        message: 'Please login with LinkedIn first'
+      });
+    }
+
+    const profileData = await fetchLinkedInProfile(req.session.linkedinAccessToken);
+    
+    if (!profileData || !profileData.sub) {
+      return res.status(401).json({ 
+        error: 'Invalid profile',
+        message: 'Could not fetch LinkedIn profile'
+      });
+    }
+
+    // Generate website HTML
+    const websiteHtml = await generatePersonalWebsite(profileData);
+    
+    // Store website
+    const websiteId = await storeWebsite(websiteHtml, profileData.sub);
+    
+    // Update user's websites array
+    await User.findOneAndUpdate(
+      { linkedinId: profileData.sub },
+      { $push: { websites: websiteId } }
+    );
+
+    res.json({ websiteId });
+
+  } catch (error) {
+    console.error('Website generation error:', error);
+    res.status(500).json({
+      error: 'Generation failed',
+      message: 'Failed to generate website'
+    });
+  }
+});
+
 // 11. Error Handling
 app.use((err, req, res, next) => {
     console.error('Server Error:', err);
