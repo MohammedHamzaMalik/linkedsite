@@ -4,6 +4,24 @@ import PropTypes from 'prop-types';
 import axios from 'axios';
 import LoadingSpinner from './common/LoadingSpinner';
 
+const PlaceholderThumbnail = () => (
+  <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+    <svg 
+      className="w-12 h-12 text-gray-400" 
+      fill="none" 
+      stroke="currentColor" 
+      viewBox="0 0 24 24"
+    >
+      <path 
+        strokeLinecap="round" 
+        strokeLinejoin="round" 
+        strokeWidth="2" 
+        d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2z" 
+      />
+    </svg>
+  </div>
+);
+
 function UserWebsites({ hideGenerateButton = false }) {
   const [websites, setWebsites] = useState([]);
   const [loading, setLoading] = useState(true);
