@@ -203,65 +203,66 @@ app.get('/auth/linkedin', (req, res) => {
     res.redirect(authorizationUrl.toString());
 });
 
+// Modify the callback route to remove website generation
 app.get('/auth/linkedin/callback', async (req, res) => {
-    try {
-        const { code, state } = req.query;
+  try {
+    const { code, state } = req.query;
 
-        if (state !== req.session.state) {
-            return res.status(400).send('Invalid state parameter');
-        }
-
-        const tokenResponse = await axios.post('https://www.linkedin.com/oauth/v2/accessToken', 
-            querystring.stringify({
-                grant_type: 'authorization_code',
-                code: code,
-                redirect_uri: config.linkedinAuth.redirectUri,
-                client_id: config.linkedinAuth.clientId,
-                client_secret: config.linkedinAuth.clientSecret
-            })
-        );
-
-        const accessToken = tokenResponse.data.access_token;
-        req.session.linkedinAccessToken = accessToken;
-
-        const profileData = await fetchLinkedInProfile(accessToken);
-        
-        if (!profileData.sub) {
-            throw new Error('LinkedIn profile ID not found');
-        }
-
-        const linkedinProfileId = profileData.sub; // LinkedIn Profile ID as userId
-        let user = await User.findOne({ userId: linkedinProfileId });
-
-        if (!user) {
-            // Create a new user if not found
-            user = new User({
-                userId: linkedinProfileId, // Use LinkedIn Profile ID as userId
-                name: profileData.name,       // Use name from LinkedIn profile
-                email: profileData.email      // Use email from LinkedIn profile (if available)
-            });
-            await user.save();
-            console.log(`New user created: ${user.userId}`);
-        } else {
-            console.log(`User logged in: ${user.userId}`);
-        }
-
-        req.session.userId = user.userId; // Set session userId to LinkedIn Profile ID
-
-        const websiteHtml = generatePersonalWebsite(profileData);
-        const websiteId = await storeWebsite(websiteHtml, linkedinProfileId);
-
-        // **Correction: Update User document to store websiteId**
-        user.websites.push(websiteId); // Push the new websiteId to the websites array
-        await user.save(); // Save the updated user document
-
-        const frontendUrl = process.env.FRONTEND_URL;
-        return res.redirect(`${frontendUrl}/website/${websiteId}`);
-
-    } catch (error) {
-        console.error('LinkedIn OAuth Error:', error);
-        return res.status(500).send('Authentication failed: ' + error.message);
+    if (state !== req.session.state) {
+      return res.status(400).send('Invalid state parameter');
     }
+
+    // Get access token
+    const tokenResponse = await axios.post('https://www.linkedin.com/oauth/v2/accessToken', 
+      querystring.stringify({
+        grant_type: 'authorization_code',
+        code: code,
+        redirect_uri: config.linkedinAuth.redirectUri,
+        client_id: config.linkedinAuth.clientId,
+        client_secret: config.linkedinAuth.clientSecret
+      })
+    );
+
+    const accessToken = tokenResponse.data.access_token;
+    req.session.linkedinAccessToken = accessToken;
+
+    // Get user profile
+    const profileData = await fetchLinkedInProfile(accessToken);
+    
+    if (!profileData || !profileData.sub) {
+      throw new Error('Failed to fetch LinkedIn profile');
+    }
+
+    // Create or update user
+    const userData = {
+      linkedinId: profileData.sub,
+      name: profileData.name || `${profileData.given_name || ''} ${profileData.family_name || ''}`.trim(),
+      email: profileData.email
+    };
+
+    // Find and update or create new user
+    let user = await User.findOneAndUpdate(
+      { linkedinId: profileData.sub },
+      userData,
+      { 
+        new: true,
+        upsert: true,
+        runValidators: true,
+        setDefaultsOnInsert: true
+      }
+    );
+
+    req.session.linkedinProfileId = profileData.sub;
+    
+    // Redirect to frontend
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    res.redirect(`${frontendUrl}/dashboard`);
+
+  } catch (error) {
+    console.error('LinkedIn callback error:', error);
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    res.redirect(`${frontendUrl}?error=auth_failed`);
+  }
 });
 
 app.get('/website/:websiteId', async (req, res) => {
