@@ -506,7 +506,7 @@ app.put('/user/websites/:websiteId', async (req, res) => {
   }
 });
 
-// Add new route for website generation
+// Update the website generation route
 app.post('/user/websites/generate', async (req, res) => {
   try {
     if (!req.session.linkedinAccessToken) {
@@ -525,25 +525,88 @@ app.post('/user/websites/generate', async (req, res) => {
       });
     }
 
+    // Generate a unique website name
+    const date = new Date().toLocaleDateString();
+    const baseWebsiteName = `My Website ${date}`;
+    let websiteName = baseWebsiteName;
+    let counter = 1;
+
+    // Keep trying until we find a unique name
+    while (true) {
+      const existingWebsite = await Website.findOne({
+        linkedinProfileId: profileData.sub,
+        websiteName
+      });
+
+      if (!existingWebsite) break;
+      
+      websiteName = `${baseWebsiteName} (${counter})`;
+      counter++;
+    }
+
     // Generate website HTML
     const websiteHtml = await generatePersonalWebsite(profileData);
     
-    // Store website
-    const websiteId = await storeWebsite(websiteHtml, profileData.sub);
-    
-    // Update user's websites array
-    await User.findOneAndUpdate(
-      { linkedinId: profileData.sub },
-      { $push: { websites: websiteId } }
+    // Generate thumbnail with specific dimensions and styling
+    const thumbnailHtml = `
+      <html>
+        <head>
+          <style>
+            body {
+              width: 1200px;
+              height: 630px;
+              margin: 0;
+              padding: 0;
+              transform: scale(0.5);
+              transform-origin: 0 0;
+            }
+            ${websiteHtml.match(/<style>(.*?)<\/style>/s)?.[1] || ''}
+          </style>
+        </head>
+        <body>
+          ${websiteHtml.replace(/<style>.*?<\/style>/s, '')}
+        </body>
+      </html>
+    `;
+
+    const thumbnail = await nodeHtmlToImage({
+      html: thumbnailHtml,
+      quality: 100,
+      type: 'jpeg',
+      puppeteerArgs: {
+        defaultViewport: {
+          width: 1200,
+          height: 630,
+          deviceScaleFactor: 2
+        },
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+      },
+      encoding: 'base64'
+    });
+
+    // Create website with unique name and thumbnail
+    const websiteId = await storeWebsite(
+      websiteHtml,
+      profileData.sub,
+      `data:image/jpeg;base64,${thumbnail}`,
+      websiteName
     );
 
-    res.json({ websiteId });
+    res.json({ websiteId, websiteName });
 
   } catch (error) {
     console.error('Website generation error:', error);
+    
+    if (error.code === 11000) {
+      return res.status(409).json({
+        error: 'Duplicate website',
+        message: 'A website with this name already exists'
+      });
+    }
+
     res.status(500).json({
       error: 'Generation failed',
-      message: 'Failed to generate website'
+      message: error.message || 'Failed to generate website'
     });
   }
 });
