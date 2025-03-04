@@ -42,11 +42,35 @@ function Dashboard() {
       await axios.post(
         `${import.meta.env.VITE_BACKEND_URL}/auth/logout`,
         {},
-        { withCredentials: true }
+        { 
+          withCredentials: true,
+          timeout: 5000
+        }
       );
-      navigate('/');
+      
+      // Clear any local storage/state
+      localStorage.removeItem('user');
+      sessionStorage.clear();
+      
+      // Navigate to home
+      navigate('/', { 
+        replace: true,
+        state: { message: 'Logged out successfully' } 
+      });
     } catch (err) {
       console.error('Logout error:', err);
+      
+      // If server error, still clear client-side data
+      localStorage.removeItem('user');
+      sessionStorage.clear();
+      
+      // Force navigate to home
+      navigate('/', { 
+        replace: true,
+        state: { 
+          message: 'Logged out with errors, please refresh the page' 
+        } 
+      });
     }
   };
 
@@ -61,7 +85,10 @@ function Dashboard() {
             <div className="flex items-center">
               <button
                 onClick={handleLogout}
-                className="ml-4 text-gray-600 hover:text-gray-900"
+                disabled={generating}
+                className="ml-4 px-4 py-2 text-gray-600 hover:text-gray-900 
+                           hover:bg-gray-100 rounded-md transition-colors
+                           disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Logout
               </button>
