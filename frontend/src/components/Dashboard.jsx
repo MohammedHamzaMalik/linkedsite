@@ -86,7 +86,7 @@ function Dashboard() {
               <button
                 onClick={handleLogout}
                 disabled={generating}
-                className="ml-4 px-4 py-2 text-gray-600 hover:text-gray-900 
+                className="ml-4 text-gray-600 hover:text-gray-900 
                            hover:bg-gray-100 rounded-md transition-colors
                            disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -102,8 +102,8 @@ function Dashboard() {
           <button
             onClick={handleGenerateWebsite}
             disabled={generating}
-            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 
-                     disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+            className="w-full sm:w-auto bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 
+                     disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
           >
             {generating ? (
               <>
