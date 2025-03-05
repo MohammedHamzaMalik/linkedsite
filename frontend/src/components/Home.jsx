@@ -3,27 +3,26 @@ import { useState } from 'react';
 import LinkedInButton from './LinkedInButton';
 
 function Home() {
-  const [loading, setLoading] = useState(false);
-
-  const handleLogin = async () => {
-    setLoading(true);
-    try {
-      window.location.href = `${import.meta.env.VITE_BACKEND_URL}/auth/linkedin`;
-    } catch (error) {
-      console.error('Login error:', error);
-      setLoading(false);
-    }
-  };
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <div className="max-w-md w-full space-y-8 p-8">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">Welcome</h1>
-          <p className="text-gray-600 mb-8">Generate your personal website with LinkedIn</p>
+    <div className="flex flex-col min-h-screen w-full bg-gray-50">
+      <main className="flex-grow flex items-center justify-center px-4 sm:px-6 lg:px-8">
+        <div className="max-w-md w-full space-y-8">
+          <div className="text-center">
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">
+              LinkedIn Portfolio Generator
+            </h1>
+            <p className="text-gray-600 mb-8">
+              Create your professional portfolio website in seconds
+            </p>
+            <a
+              href={`${import.meta.env.VITE_BACKEND_URL}/auth/linkedin`}
+              className="w-full inline-flex justify-center items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Sign in with LinkedIn
+            </a>
+          </div>
         </div>
-        <LinkedInButton onClick={handleLogin} loading={loading} />
-      </div>
+      </main>
     </div>
   );
 }
