@@ -209,12 +209,18 @@ function UserWebsites({ hideGenerateButton = false }) {
     }
   }, [navigate, showNotification]);
 
-  if (loading) return <LoadingSpinner />;
+  if (loading) {
+    return (
+      <div className="flex min-h-screen w-full items-center justify-center bg-gray-50">
+        <LoadingSpinner />
+      </div>
+    );
+  }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-        <div className="bg-white rounded-lg shadow-md p-6 max-w-md w-full">
+      <div className="flex min-h-screen w-full items-center justify-center bg-gray-50 p-4">
+        <div className="w-full max-w-md bg-white rounded-lg shadow-md p-6">
           <h2 className="text-red-600 text-xl font-semibold mb-4">Error</h2>
           <p className="text-gray-600 mb-4">{error}</p>
           <Link 
@@ -229,8 +235,8 @@ function UserWebsites({ hideGenerateButton = false }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-6xl mx-auto px-4">
+    <div className="flex flex-col min-h-screen w-full bg-gray-50">
+      <div className="flex-grow w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900">My Websites</h1>
           {!hideGenerateButton && (
