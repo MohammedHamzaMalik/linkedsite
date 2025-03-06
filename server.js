@@ -716,9 +716,6 @@ async function generatePersonalWebsite(profileData) {
           <div class="max-w-4xl mx-auto px-4">
             <div class="flex justify-center space-x-8">
               <a href="#about" class="px-3 py-4 text-sm font-medium text-gray-700 hover:text-blue-600">About</a>
-              <a href="#experience" class="px-3 py-4 text-sm font-medium text-gray-700 hover:text-blue-600">Experience</a>
-              <a href="#education" class="px-3 py-4 text-sm font-medium text-gray-700 hover:text-blue-600">Education</a>
-              <a href="#skills" class="px-3 py-4 text-sm font-medium text-gray-700 hover:text-blue-600">Skills</a>
               <a href="#contact" class="px-3 py-4 text-sm font-medium text-gray-700 hover:text-blue-600">Contact</a>
             </div>
           </div>
