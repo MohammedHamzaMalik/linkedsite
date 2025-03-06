@@ -31,43 +31,79 @@ Requirements:
 
 Response:`);
 
-async function generateAiEnhancedContent(profileData) {
-  try {
-    if (!profileData?.name) {
-      throw new Error('Profile name is required');
+async function generateAiEnhancedContent(profileData, maxRetries = 3) {
+  const retryDelay = (attempt) => Math.min(1000 * Math.pow(2, attempt), 10000);
+  
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      if (!profileData?.name) {
+        throw new Error('Profile name is required');
+      }
+
+      const prompt = await aboutMePrompt.format({
+        name: profileData.name,
+        email: profileData.email || 'Available on request'
+      });
+
+      let response = await model.call(prompt);
+      
+      // Clean and validate response
+      response = response
+        .trim()
+        .replace(/^["'\s]+|["'\s]+$/g, '') // Remove quotes and extra spaces
+        .replace(/Name:.*?About Me:/gs, '') // Remove any repeated prompt
+        .replace(/^About Me:\s*/i, '') // Remove "About Me:" if present
+        .replace(/\n+/g, ' ') // Remove multiple newlines
+        .trim();
+
+      // Improved validation
+      const isValid = response &&
+      response.length >= 50 &&
+      response.length <= 300 &&
+      response.includes(profileData.name) &&
+      !response.includes('Name:') &&
+      !response.includes('Email:') &&
+      !response.includes('###') &&
+      /[.!?]$/.test(response); // Ends with proper punctuation
+
+      if (isValid) {
+        console.log('Successfully generated valid content:', response.substring(0, 50) + '...');
+        return response;
+      }
+
+      console.log('Invalid response:', {
+        length: response.length,
+        hasName: response.includes(profileData.name),
+        firstChars: response.substring(0, 30)
+      });
+
+      throw new Error('Generated content did not meet quality requirements');
+
+    } catch (error) {
+      console.error(`Generation attempt ${attempt + 1} failed:`, error.message);
+        
+      if (attempt === maxRetries - 1) {
+        console.log('All generation attempts failed, using fallback content');
+        return generateFallbackContent(profileData);
+      }
+
+      // Wait before retrying with exponential backoff
+      await new Promise(resolve => setTimeout(resolve, retryDelay(attempt)));
     }
-
-    const prompt = await aboutMePrompt.format({
-      name: profileData.name,
-      email: profileData.email || 'Available on request'
-    });
-
-    let response = await model.call(prompt);
-    
-    // Clean and validate response
-    response = response
-      .trim()
-      .replace(/^["'\s]+|["'\s]+$/g, '') // Remove quotes and extra spaces
-      .replace(/Name:.*?About Me:/gs, '') // Remove any repeated prompt
-      .replace(/^About Me:\s*/i, '') // Remove "About Me:" if present
-      .replace(/\n+/g, ' ') // Remove multiple newlines
-      .trim();
-
-    // Validate response length and content
-    if (!response || response.length < 50 || response.includes('Name:') || response.includes('Email:')) {
-      throw new Error('Invalid AI response generated');
-    }
-
-    return response;
-
-  } catch (error) {
-    console.error('AI content generation error:', error);
-    
-    // Fallback to template response
-    return `Hello! I'm ${profileData.name}, a dedicated professional passionate about creating impactful solutions. 
-            I believe in building meaningful connections and delivering value through collaboration. 
-            I'm always open to discussing new opportunities and ideas in my field.`;
   }
+  return generateFallbackContent(profileData);
+}
+
+function generateFallbackContent(profileData) {
+  const templates = [
+    `${profileData.name} is a dedicated professional who brings innovation and expertise to every project. With a strong foundation in problem-solving and collaborative leadership, they consistently deliver impactful solutions while fostering meaningful professional relationships.`,
+    `As an accomplished professional, ${profileData.name} combines technical excellence with strategic thinking. Their commitment to continuous learning and innovation drives them to create lasting impact in their field while building strong collaborative partnerships.`,
+    `${profileData.name} stands out as a forward-thinking professional with a passion for excellence. Their analytical approach, combined with strong leadership qualities, enables them to tackle complex challenges while fostering team success.`
+  ];
+
+  const selectedTemplate = templates[Math.floor(Math.random() * templates.length)];
+  console.log('Using fallback template:', selectedTemplate.substring(0, 50) + '...');
+  return selectedTemplate;
 }
 
 module.exports = { generateAiEnhancedContent };
