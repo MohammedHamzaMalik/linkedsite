@@ -339,7 +339,59 @@ app.get('/user/websites', async (req, res) => {
   }
 });
 
-// Delete website endpoint
+// Delete all websites route
+app.delete('/user/websites/all', async (req, res) => {
+  try {
+    // Check authentication
+    if (!req.session.linkedinAccessToken) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Please login first'
+      });
+    }
+
+    // Get profile data from session
+    const profileData = await fetchLinkedInProfile(req.session.linkedinAccessToken);
+    
+    if (!profileData || !profileData.sub) {
+      return res.status(401).json({
+        error: 'Invalid profile',
+        message: 'Could not verify user identity'
+      });
+    }
+
+    console.log('Deleting all websites for user:', profileData.sub);
+
+    // Delete all websites for this user using linkedinProfileId
+    const result = await Website.deleteMany({ 
+      linkedinProfileId: profileData.sub
+    });
+
+    console.log('Delete result:', result);
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({
+        error: 'Not Found',
+        message: 'No websites found to delete'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `Successfully deleted ${result.deletedCount} websites`,
+      deletedCount: result.deletedCount
+    });
+
+  } catch (error) {
+    console.error('Delete all websites error:', error);
+    res.status(500).json({
+      error: 'Server error',
+      message: 'Failed to delete all websites'
+    });
+  }
+});
+
+// Keep the single delete route after the bulk delete route
 app.delete('/user/websites/:websiteId', async (req, res) => {
   try {
     // Check authentication
