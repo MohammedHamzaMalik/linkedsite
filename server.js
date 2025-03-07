@@ -143,6 +143,9 @@ app.use(rateLimit({
 const bodyParser = require('express').json();
 app.use(bodyParser);
 
+// Add after other middleware
+app.use(express.static('public'));
+
 // 9. Helper Functions
 function generateState() {
     return crypto.randomBytes(16).toString('hex');
@@ -686,8 +689,14 @@ async function generatePersonalWebsite(profileData) {
         <title>${fullName} - Personal Website</title>
         <script src="https://cdn.tailwindcss.com"></script>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+        <script src="/public/website.js" defer></script>
         <style>
-          body { font-family: 'Inter', sans-serif; }
+          body { 
+            font-family: 'Inter', sans-serif; 
+          }
+          .fade-in {
+            opacity: 1 !important;
+          }
         </style>
       </head>
       <body class="bg-gray-50">
