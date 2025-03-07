@@ -622,9 +622,17 @@ app.post('/user/websites/generate', async (req, res) => {
   }
 });
 
-// Add publish route
-app.post('/user/websites/:websiteId/publish', authMiddleware, async (req, res) => {
+// Add publish route with proper session handling
+app.post('/user/websites/:websiteId/publish', async (req, res) => {
   try {
+    // Check for valid session
+    if (!req.session.linkedinId) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Please login first'
+      });
+    }
+
     const website = await Website.findOne({
       websiteId: req.params.websiteId,
       linkedinProfileId: req.session.linkedinId
@@ -643,8 +651,7 @@ app.post('/user/websites/:websiteId/publish', authMiddleware, async (req, res) =
     res.json({
       success: true,
       message: 'Website published successfully',
-      websiteId: website.websiteId,
-      publicUrl: `${req.protocol}://${req.get('host')}/website/${website.websiteId}`
+      websiteId: website.websiteId
     });
 
   } catch (error) {
@@ -656,9 +663,17 @@ app.post('/user/websites/:websiteId/publish', authMiddleware, async (req, res) =
   }
 });
 
-// Add unpublish route
-app.post('/user/websites/:websiteId/unpublish', authMiddleware, async (req, res) => {
+// Add unpublish route with proper session handling
+app.post('/user/websites/:websiteId/unpublish', async (req, res) => {
   try {
+    // Check for valid session
+    if (!req.session.linkedinId) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'Please login first'
+      });
+    }
+
     const website = await Website.findOne({
       websiteId: req.params.websiteId,
       linkedinProfileId: req.session.linkedinId
