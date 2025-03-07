@@ -293,13 +293,16 @@ app.get('/website/:websiteId', async (req, res) => {
       });
     }
 
-    if (!website.published && !req.session.linkedinId) {
+    // Check if website is published or if user is owner
+    const isOwner = req.session.linkedinId === website.linkedinProfileId;
+    if (!website.published && !isOwner) {
       return res.status(403).json({
         error: 'Forbidden',
         message: 'This website is not published'
       });
     }
 
+    // Set HTML content type and send
     res.setHeader('Content-Type', 'text/html');
     res.send(website.htmlContent);
 
