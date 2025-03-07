@@ -13,6 +13,7 @@ const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 const nodeHtmlToImage = require('node-html-to-image');
 const { generateAiEnhancedContent } = require('./utils/aiContentGenerator');
+const authMiddleware = require('./middleware/auth');
 
 // 2. Debug helper
 const debug = (message, data) => {
@@ -120,13 +121,16 @@ const app = express();
 // 8. Middleware
 app.use(session({
     secret: process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex'),
-    resave: false,
-    saveUninitialized: false,
+    resave: true, // Changed to true
+    saveUninitialized: true, // Changed to true
+    name: 'sessionId', // Add explicit cookie name
     cookie: {
         secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
-    }
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours
+        sameSite: 'lax' // Added sameSite policy
+    },
+    rolling: true // Refresh session on each request
 }));
 
 app.use(cors({
@@ -238,7 +242,6 @@ app.get('/auth/linkedin/callback', async (req, res) => {
     );
 
     const accessToken = tokenResponse.data.access_token;
-    req.session.linkedinAccessToken = accessToken;
 
     // Get user profile
     const profileData = await fetchLinkedInProfile(accessToken);
@@ -247,30 +250,26 @@ app.get('/auth/linkedin/callback', async (req, res) => {
       throw new Error('Failed to fetch LinkedIn profile');
     }
 
-    // Create or update user
-    const userData = {
-      linkedinId: profileData.sub,
-      name: profileData.name || `${profileData.given_name || ''} ${profileData.family_name || ''}`.trim(),
-      email: profileData.email
+    // Store important data in session
+    req.session.linkedinAccessToken = accessToken;
+    req.session.linkedinId = profileData.sub;
+    req.session.userProfile = {
+      name: profileData.name,
+      email: profileData.email,
+      picture: profileData.picture
     };
 
-    // Find and update or create new user
-    let user = await User.findOneAndUpdate(
-      { linkedinId: profileData.sub },
-      userData,
-      { 
-        new: true,
-        upsert: true,
-        runValidators: true,
-        setDefaultsOnInsert: true
+    // Save session explicitly
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error:', err);
+        throw new Error('Failed to save session');
       }
-    );
-
-    req.session.linkedinProfileId = profileData.sub;
-    
-    // Redirect to frontend
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    res.redirect(`${frontendUrl}/dashboard`);
+      
+      // Redirect to frontend
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      res.redirect(`${frontendUrl}/dashboard`);
+    });
 
   } catch (error) {
     console.error('LinkedIn callback error:', error);
@@ -303,144 +302,79 @@ app.get('/auth/logout', (req, res) => {
   });
 });
 
-// Add new route for fetching user websites
-app.get('/user/websites', async (req, res) => {
+// Protected routes - Add authMiddleware
+app.get('/user/websites', authMiddleware, async (req, res) => {
   try {
-    // Check if user is authenticated via LinkedIn
-    if (!req.session.linkedinAccessToken) {
-      return res.status(401).json({ 
-        error: 'Unauthorized',
-        message: 'Please login with LinkedIn first'
-      });
-    }
-
-    // Get profile data from session
-    const profileData = await fetchLinkedInProfile(req.session.linkedinAccessToken);
-    
-    if (!profileData || !profileData.sub) {
-      return res.status(401).json({ 
-        error: 'Invalid profile',
-        message: 'Could not retrieve LinkedIn profile'
-      });
-    }
-
-    // Find websites by LinkedIn profile ID
     const websites = await Website.find({ 
-      linkedinProfileId: profileData.sub 
-    }).select('websiteId websiteName thumbnail createdAt').sort({ createdAt: -1 });
+      linkedinProfileId: req.session.linkedinId 
+    }).sort({ createdAt: -1 });
 
     res.json(websites);
   } catch (error) {
-    console.error('Error fetching user websites:', error);
-    res.status(500).json({ 
+    console.error('Fetch websites error:', error);
+    res.status(500).json({
       error: 'Server error',
       message: 'Failed to fetch websites'
     });
   }
 });
 
-// Delete all websites route
-app.delete('/user/websites/all', async (req, res) => {
+app.delete('/user/websites/all', authMiddleware, async (req, res) => {
   try {
-    // Check authentication
-    if (!req.session.linkedinAccessToken) {
-      return res.status(401).json({
-        error: 'Unauthorized',
-        message: 'Please login first'
-      });
-    }
-
-    // Get profile data from session
-    const profileData = await fetchLinkedInProfile(req.session.linkedinAccessToken);
-    
-    if (!profileData || !profileData.sub) {
-      return res.status(401).json({
-        error: 'Invalid profile',
-        message: 'Could not verify user identity'
-      });
-    }
-
-    console.log('Deleting all websites for user:', profileData.sub);
-
-    // Delete all websites for this user using linkedinProfileId
     const result = await Website.deleteMany({ 
-      linkedinProfileId: profileData.sub
+      linkedinProfileId: req.session.linkedinId 
     });
-
-    console.log('Delete result:', result);
 
     if (result.deletedCount === 0) {
       return res.status(404).json({
         error: 'Not Found',
-        message: 'No websites found to delete'
+        message: 'No websites found'
       });
     }
 
     res.json({
       success: true,
-      message: `Successfully deleted ${result.deletedCount} websites`,
+      message: `Deleted ${result.deletedCount} websites`,
       deletedCount: result.deletedCount
     });
-
   } catch (error) {
     console.error('Delete all websites error:', error);
     res.status(500).json({
-      error: 'Server error',
-      message: 'Failed to delete all websites'
+      error: 'Server error', 
+      message: 'Failed to delete websites'
     });
   }
 });
 
-// Keep the single delete route after the bulk delete route
-app.delete('/user/websites/:websiteId', async (req, res) => {
+// Update the delete website route
+app.delete('/user/websites/:websiteId', authMiddleware, async (req, res) => {
   try {
-    // Check authentication
-    if (!req.session.linkedinAccessToken) {
-      return res.status(401).json({ 
-        error: 'Unauthorized',
-        message: 'Please login with LinkedIn first'
-      });
-    }
-
-    const { websiteId } = req.params;
-    
-    // Get profile data from session
-    const profileData = await fetchLinkedInProfile(req.session.linkedinAccessToken);
-    
-    if (!profileData || !profileData.sub) {
-      return res.status(401).json({ 
-        error: 'Invalid profile',
-        message: 'Could not verify user identity'
-      });
-    }
-
-    // Find website
-    const website = await Website.findOne({ websiteId });
+    // Use websiteId instead of _id
+    const website = await Website.findOne({
+      websiteId: req.params.websiteId,
+      linkedinProfileId: req.session.linkedinId
+    });
 
     if (!website) {
       return res.status(404).json({
-        error: 'Not found',
+        error: 'Not Found',
         message: 'Website not found'
       });
     }
 
-    // Check ownership
-    if (website.linkedinProfileId !== profileData.sub) {
-      return res.status(403).json({
-        error: 'Forbidden',
-        message: 'You do not have permission to delete this website'
-      });
-    }
+    // Use deleteOne instead of remove
+    await Website.deleteOne({ websiteId: req.params.websiteId });
+    
+    res.json({ 
+      success: true,
+      message: 'Website deleted successfully'
+    });
 
-    // Delete website
-    await Website.deleteOne({ websiteId });
-
-    res.json({ message: 'Website deleted successfully' });
   } catch (error) {
-    console.error('Error deleting website:', error);
-    res.status(500).json({ 
+    console.error('Delete website error:', error);
+    res.status(500).json({
       error: 'Server error',
-      message: 'Failed to delete website'
+      message: 'Failed to delete website' 
     });
   }
 });
@@ -688,6 +622,13 @@ app.post('/auth/logout', (req, res) => {
       message: 'Failed to logout' 
     });
   }
+});
+
+app.get('/user/check-auth', (req, res) => {
+  res.json({
+    authenticated: !!(req.session.linkedinAccessToken && req.session.linkedinId),
+    userId: req.session.linkedinId || null
+  });
 });
 
 // 11. Error Handling
