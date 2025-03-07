@@ -62,8 +62,12 @@ const websiteSchema = new mongoose.Schema({
   createdAt: {
     type: Date,
     default: Date.now
+  },
+  published: {
+    type: Boolean,
+    default: false
   }
-});
+}, { timestamps: true });
 
 // Add compound index for unique names per user
 websiteSchema.index({ linkedinProfileId: 1, websiteName: 1 }, { unique: true });
@@ -279,16 +283,33 @@ app.get('/auth/linkedin/callback', async (req, res) => {
 });
 
 app.get('/website/:websiteId', async (req, res) => {
-    try {
-        const htmlContent = await getWebsiteHtml(req.params.websiteId);
-        if (!htmlContent) {
-            return res.status(404).send('Website not found');
-        }
-        res.setHeader('Content-Type', 'text/html');
-        res.send(htmlContent);
-    } catch (error) {
-        res.status(500).send('Error retrieving website');
+  try {
+    const website = await Website.findOne({ websiteId: req.params.websiteId });
+
+    if (!website) {
+      return res.status(404).json({
+        error: 'Not Found',
+        message: 'Website not found'
+      });
     }
+
+    if (!website.published && !req.session.linkedinId) {
+      return res.status(403).json({
+        error: 'Forbidden',
+        message: 'This website is not published'
+      });
+    }
+
+    res.setHeader('Content-Type', 'text/html');
+    res.send(website.htmlContent);
+
+  } catch (error) {
+    console.error('Get website error:', error);
+    res.status(500).json({
+      error: 'Server error',
+      message: 'Failed to fetch website'
+    });
+  }
 });
 
 // New Logout Route
@@ -594,6 +615,73 @@ app.post('/user/websites/generate', async (req, res) => {
     res.status(500).json({
       error: 'Generation failed',
       message: error.message || 'Failed to generate website'
+    });
+  }
+});
+
+// Add publish route
+app.post('/user/websites/:websiteId/publish', authMiddleware, async (req, res) => {
+  try {
+    const website = await Website.findOne({
+      websiteId: req.params.websiteId,
+      linkedinProfileId: req.session.linkedinId
+    });
+
+    if (!website) {
+      return res.status(404).json({
+        error: 'Not Found',
+        message: 'Website not found'
+      });
+    }
+
+    website.published = true;
+    await website.save();
+
+    res.json({
+      success: true,
+      message: 'Website published successfully',
+      websiteId: website.websiteId,
+      publicUrl: `${req.protocol}://${req.get('host')}/website/${website.websiteId}`
+    });
+
+  } catch (error) {
+    console.error('Publish website error:', error);
+    res.status(500).json({
+      error: 'Server error',
+      message: 'Failed to publish website'
+    });
+  }
+});
+
+// Add unpublish route
+app.post('/user/websites/:websiteId/unpublish', authMiddleware, async (req, res) => {
+  try {
+    const website = await Website.findOne({
+      websiteId: req.params.websiteId,
+      linkedinProfileId: req.session.linkedinId
+    });
+
+    if (!website) {
+      return res.status(404).json({
+        error: 'Not Found',
+        message: 'Website not found'
+      });
+    }
+
+    website.published = false;
+    await website.save();
+
+    res.json({
+      success: true,
+      message: 'Website unpublished successfully',
+      websiteId: website.websiteId
+    });
+
+  } catch (error) {
+    console.error('Unpublish website error:', error);
+    res.status(500).json({
+      error: 'Server error',
+      message: 'Failed to unpublish website'
     });
   }
 });
