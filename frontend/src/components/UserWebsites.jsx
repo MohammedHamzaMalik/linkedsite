@@ -24,7 +24,7 @@ const PlaceholderThumbnail = () => (
 
 function UserWebsites({ hideGenerateButton = false }) {
   const [websites, setWebsites] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [deletingWebsites, setDeletingWebsites] = useState(new Set());
   const [renameWebsiteId, setRenameWebsiteId] = useState(null);
@@ -48,50 +48,36 @@ function UserWebsites({ hideGenerateButton = false }) {
     }, 3000);
   }, []);
 
-  useEffect(() => {
-    const controller = new AbortController();
-
-    const fetchWebsites = async () => {
-      try {
-        const response = await axios.get(
-          `${import.meta.env.VITE_BACKEND_URL}/user/websites`,
-          { 
-            withCredentials: true,
-            timeout: 5000,
-            signal: controller.signal
-          }
-        );
-
-        if (response.data) {
-          setWebsites(response.data);
-        }
-      } catch (err) {
-        if (axios.isCancel(err)) {
-          console.log('Request cancelled');
-          return;
-        }
-
-        console.error('Error fetching websites:', err);
-        
-        if (err.response?.status === 401) {
-          navigate('/', { 
-            state: { message: 'Please login with LinkedIn first' }
-          });
-          return;
-        }
-
-        setError(err.response?.data?.message || 'Failed to fetch websites');
-      } finally {
-        setLoading(false);
+  const fetchWebsites = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_BACKEND_URL}/user/websites`,
+        { withCredentials: true }
+      );
+      
+      if (response.data) {
+        setWebsites(response.data);
       }
-    };
-
-    fetchWebsites();
-
-    return () => {
-      controller.abort();
-    };
+    } catch (err) {
+      console.error('Error fetching websites:', err);
+      if (err.response?.status === 401) {
+        navigate('/', { 
+          state: { message: 'Please login again' }
+        });
+        return;
+      }
+      setError(err.response?.data?.message || 'Failed to fetch websites');
+    } finally {
+      setLoading(false);
+    }
   }, [navigate]);
+
+  useEffect(() => {
+    fetchWebsites();
+  }, [fetchWebsites]);
 
   const handleDeleteWebsite = async (websiteId) => {
     if (!window.confirm('Are you sure you want to delete this website?')) {
