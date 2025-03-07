@@ -705,10 +705,22 @@ async function generatePersonalWebsite(profileData) {
             ${
               profilePicture
                 ? `<div class="mb-6 md:mb-0 md:mr-8">
-                    <img src="${profilePicture}" alt="${fullName}" 
-                         class="rounded-full h-32 w-32 object-cover border-4 border-white shadow-lg">
+                    <img 
+                      src="${profilePicture}" 
+                      alt="${fullName}" 
+                      class="rounded-full h-40 w-40 md:h-48 md:w-48 object-cover border-4 border-white shadow-xl transform hover:scale-105 transition-transform duration-300"
+                      onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&size=200&background=random';"
+                      loading="eager"
+                      fetchpriority="high"
+                    >
                    </div>`
-                : ''
+                : `<div class="mb-6 md:mb-0 md:mr-8">
+                    <img 
+                      src="https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&size=200&background=random" 
+                      alt="${fullName}" 
+                      class="rounded-full h-40 w-40 md:h-48 md:w-48 object-cover border-4 border-white shadow-xl"
+                    >
+                   </div>`
             }
             <div class="text-center md:text-left">
               <h1 class="text-4xl font-bold">${fullName}</h1>
