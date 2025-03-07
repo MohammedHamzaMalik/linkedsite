@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import UserWebsites from './UserWebsites';
@@ -8,6 +8,31 @@ function Dashboard() {
   const [error, setError] = useState(null);
   const [deleting, setDeleting] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    // Check if user is logged in
+    const checkAuth = async () => {
+      try {
+        const response = await axios.get(
+          `${import.meta.env.VITE_BACKEND_URL}/user/check-auth`,
+          { withCredentials: true }
+        );
+
+        if (!response.data.authenticated) {
+          navigate('/', { 
+            state: { message: 'Please login first' }
+          });
+        }
+      } catch (error) {
+        console.error('Auth check failed:', error);
+        navigate('/', {
+          state: { message: 'Session expired, please login again' }
+        });
+      }
+    };
+
+    checkAuth();
+  }, [navigate]);
 
   const handleGenerateWebsite = async () => {
     setGenerating(true);
