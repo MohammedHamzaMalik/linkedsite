@@ -740,17 +740,21 @@ async function generatePersonalWebsite(profileData) {
             </div>
           </section>
           
-          <section id="contact">
-            <h2 class="text-2xl font-bold text-gray-800 mb-4">Contact</h2>
-            <div class="bg-white rounded-lg shadow-md p-6">
-              ${
-                email
-                  ? `<p class="text-gray-600 mb-2"><strong>Email:</strong> ${email}</p>`
-                  : ''
-              }
-              <p class="text-gray-600">
-                Additional contact information would be displayed here.
-              </p>
+          <section id="contact" class="section-scroll">
+            <h2 class="font-display text-3xl font-bold text-gray-900 mb-8 text-center">
+              Get in Touch
+            </h2>
+            <div class="flex justify-center space-y-4">
+              ${email ? `
+                <a href="mailto:${email}" 
+                   class="inline-flex items-center px-6 py-3 text-base font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 hover:text-white transition-colors shadow-md hover:shadow-lg">
+                  <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
+                          d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                  Send me an email
+                </a>
+              ` : ''}
             </div>
           </section>
         </main>
