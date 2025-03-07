@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import axios from 'axios';
 import LoadingSpinner from './common/LoadingSpinner';
+// import { toast } from 'react-toastify';
 
 const PlaceholderThumbnail = () => (
   <div className="w-full h-full bg-gray-100 flex items-center justify-center">
@@ -32,6 +33,7 @@ function UserWebsites({ hideGenerateButton = false }) {
   const [renamingStatus, setRenamingStatus] = useState({ loading: false, error: null });
   const [deleteStatus, setDeleteStatus] = useState({ error: null, success: null });
   const [generating, setGenerating] = useState(false);
+  const [publishingId, setPublishingId] = useState(null);
   const navigate = useNavigate();
 
   const showNotification = useCallback((message, type = 'success') => {
@@ -195,6 +197,54 @@ function UserWebsites({ hideGenerateButton = false }) {
     }
   }, [navigate, showNotification]);
 
+  const handlePublishToggle = async (websiteId, currentlyPublished) => {
+    setPublishingId(websiteId);
+    setError(null);
+
+    try {
+      const endpoint = currentlyPublished ? 'unpublish' : 'publish';
+      const response = await axios.post(
+        `${import.meta.env.VITE_BACKEND_URL}/user/websites/${websiteId}/${endpoint}`,
+        {},
+        { withCredentials: true }
+      );
+
+      if (response.data.success) {
+        setWebsites(websites.map(website => 
+          website.websiteId === websiteId 
+            ? { ...website, published: !currentlyPublished }
+            : website
+        ));
+
+        // Show success toast/notification
+        showNotification(response.data.message);
+        
+        // If publishing, show the public URL
+        if (!currentlyPublished && response.data.publicUrl) {
+          showNotification(
+            <div>
+              Your website is now public at: 
+              <a 
+                href={response.data.publicUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-500 hover:text-blue-700 ml-1"
+              >
+                View Site
+              </a>
+            </div>
+          );
+        }
+      }
+    } catch (err) {
+      console.error('Publish toggle error:', err);
+      setError(err.response?.data?.message || 'Failed to update website status');
+      showNotification('Failed to update website status', 'error');
+    } finally {
+      setPublishingId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-screen w-full items-center justify-center bg-gray-50">
@@ -357,6 +407,41 @@ function UserWebsites({ hideGenerateButton = false }) {
                     >
                       {deletingWebsites.has(website.websiteId) ? 'Deleting...' : 'Delete'}
                     </button>
+                  </div>
+                  <div className="mt-4 flex justify-between items-center">
+                    <button
+                      onClick={() => handlePublishToggle(website.websiteId, website.published)}
+                      disabled={publishingId === website.websiteId}
+                      className={`px-4 py-2 rounded-md text-sm font-medium transition-colors
+                        ${website.published 
+                          ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200' 
+                          : 'bg-green-100 text-green-800 hover:bg-green-200'
+                        }
+                        disabled:opacity-50 disabled:cursor-not-allowed`}
+                    >
+                      {publishingId === website.websiteId ? (
+                        <span className="flex items-center">
+                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                          Processing...
+                        </span>
+                      ) : (
+                        website.published ? 'Unpublish' : 'Publish'
+                      )}
+                    </button>
+
+                    {website.published && (
+                      <a
+                        href={`${import.meta.env.VITE_BACKEND_URL}/website/${website.websiteId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 text-sm"
+                      >
+                        View Public Site
+                      </a>
+                    )}
                   </div>
                 </div>
               </div>
