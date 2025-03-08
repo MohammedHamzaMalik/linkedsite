@@ -25,7 +25,7 @@ npm install --legacy-peer-deps
 npm ci
 
 echo "Building frontend..."
-npm run build
+npm install --include=dev && npm run build && npm prune
 
 echo "Moving back to root..."
 cd ..
