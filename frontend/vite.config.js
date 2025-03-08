@@ -21,7 +21,9 @@ export default defineConfig({
       output: {
         assetFileNames: 'assets/[name]-[hash][extname]'
       }
-    }
+    },
+    outDir: 'dist',
+    sourcemap: true
   },
   server: {
     port: 5173
