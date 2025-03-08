@@ -176,6 +176,19 @@ app.use((req, res, next) => {
   next();
 });
 
+// Add before routes
+app.use((req, res, next) => {
+  const logSession = {
+    id: req.sessionID,
+    state: req.session?.state,
+    linkedinId: req.session?.linkedinId,
+    hasAccessToken: !!req.session?.linkedinAccessToken
+  };
+  
+  console.log('Session Debug:', logSession);
+  next();
+});
+
 // 9. Helper Functions
 function generateState() {
     return crypto.randomBytes(16).toString('hex');
@@ -232,17 +245,22 @@ async function getWebsiteHtml(websiteId) {
 }
 
 // 10. Routes
-app.get('/auth/linkedin', (req, res) => {
-  const state = generateState();
-  
-  // Save state to session and wait for it to be saved
-  req.session.state = state;
-  req.session.save((err) => {
-    if (err) {
-      console.error('Session save error:', err);
-      return res.status(500).json({ error: 'Failed to save session' });
-    }
+// Update the LinkedIn auth route
+app.get('/auth/linkedin', async (req, res) => {
+  try {
+    const state = generateState();
     
+    // Save state to session and wait for it
+    req.session.state = state;
+    
+    // Use Promise to ensure session is saved
+    await new Promise((resolve, reject) => {
+      req.session.save((err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+
     const authorizationUrl = new URL('https://www.linkedin.com/oauth/v2/authorization');
     authorizationUrl.searchParams.append('response_type', 'code');
     authorizationUrl.searchParams.append('client_id', config.linkedinAuth.clientId);
@@ -252,12 +270,16 @@ app.get('/auth/linkedin', (req, res) => {
     
     console.log('Generated state:', state);
     console.log('Session ID:', req.sessionID);
-    
+    console.log('Session state:', req.session.state);
+
     res.redirect(authorizationUrl.toString());
-  });
+  } catch (error) {
+    console.error('LinkedIn auth error:', error);
+    res.redirect(`${process.env.FRONTEND_URL}?error=auth_failed`);
+  }
 });
 
-// Modify the callback route to remove website generation
+// Update the callback route
 app.get('/auth/linkedin/callback', async (req, res) => {
   try {
     const { code, state } = req.query;
@@ -266,14 +288,13 @@ app.get('/auth/linkedin/callback', async (req, res) => {
     console.log('Stored State:', req.session.state);
     console.log('Received State:', state);
 
-    // More lenient state check for debugging
-    if (state !== req.session.state) {
-      console.warn('State mismatch - Session might have been lost');
-      console.warn('Expected:', req.session.state);
-      console.warn('Received:', state);
+    // State validation
+    if (!state || !req.session.state || state !== req.session.state) {
+      console.error('State mismatch or missing');
+      console.error('Session:', req.session);
+      return res.redirect(`${process.env.FRONTEND_URL}?error=invalid_state`);
     }
 
-    // Get access token
     const tokenResponse = await axios.post('https://www.linkedin.com/oauth/v2/accessToken', 
       querystring.stringify({
         grant_type: 'authorization_code',
@@ -285,48 +306,34 @@ app.get('/auth/linkedin/callback', async (req, res) => {
     );
 
     const accessToken = tokenResponse.data.access_token;
-
-    // Get user profile
     const profileData = await fetchLinkedInProfile(accessToken);
-    
+
     if (!profileData || !profileData.sub) {
       throw new Error('Failed to fetch LinkedIn profile');
     }
 
-    // Store session data
-    req.session.regenerate((err) => {
-      if (err) {
-        console.error('Session regeneration error:', err);
-        return res.redirect(`${process.env.FRONTEND_URL}?error=session_error`);
-      }
+    // Update session data
+    req.session.linkedinAccessToken = accessToken;
+    req.session.linkedinId = profileData.sub;
+    req.session.userProfile = {
+      name: profileData.name,
+      email: profileData.email,
+      picture: profileData.picture
+    };
 
-      req.session.linkedinAccessToken = accessToken;
-      req.session.linkedinId = profileData.sub;
-      req.session.userProfile = {
-        name: profileData.name,
-        email: profileData.email,
-        picture: profileData.picture
-      };
-
+    // Save session explicitly
+    await new Promise((resolve, reject) => {
       req.session.save((err) => {
-        if (err) {
-          console.error('Session save error:', err);
-          return res.redirect(`${process.env.FRONTEND_URL}?error=session_error`);
-        }
-
-        const redirectUrl = `${process.env.FRONTEND_URL}/dashboard`;
-        console.log('Redirecting to:', redirectUrl);
-        res.redirect(redirectUrl);
+        if (err) reject(err);
+        else resolve();
       });
     });
 
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
+
   } catch (error) {
     console.error('LinkedIn callback error:', error);
-    const frontendUrl = process.env.NODE_ENV === 'production' 
-      ? 'https://linkedsite.onrender.com' 
-      : 'http://localhost:5173';
-      
-    res.redirect(`${frontendUrl}?error=auth_failed`);
+    res.redirect(`${process.env.FRONTEND_URL}?error=auth_failed`);
   }
 });
 
