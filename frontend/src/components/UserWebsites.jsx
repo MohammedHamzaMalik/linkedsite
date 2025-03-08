@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import axios from 'axios';
 import LoadingSpinner from './common/LoadingSpinner';
-// import { toast } from 'react-toastify';
+import api from '../api/axios';
 
 const PlaceholderThumbnail = () => (
   <div className="w-full h-full bg-gray-100 flex items-center justify-center">
@@ -50,36 +50,26 @@ function UserWebsites({ hideGenerateButton = false }) {
     }, 3000);
   }, []);
 
-  const fetchWebsites = useCallback(async () => {
+  const fetchWebsites = async () => {
     setLoading(true);
-    setError(null);
-    
     try {
-      const response = await axios.get(
-        `${import.meta.env.VITE_BACKEND_URL}/user/websites`,
-        { withCredentials: true }
-      );
-      
-      if (response.data) {
-        setWebsites(response.data);
+      const response = await api.get('/user/websites');
+      setWebsites(response.data);
+    } catch (error) {
+      console.error('Error fetching websites:', error);
+      if (error.response?.status === 401) {
+        // Redirect to login if unauthorized
+        window.location.href = '/';
       }
-    } catch (err) {
-      console.error('Error fetching websites:', err);
-      if (err.response?.status === 401) {
-        navigate('/', { 
-          state: { message: 'Please login again' }
-        });
-        return;
-      }
-      setError(err.response?.data?.message || 'Failed to fetch websites');
+      setError('Failed to load websites');
     } finally {
       setLoading(false);
     }
-  }, [navigate]);
+  };
 
   useEffect(() => {
     fetchWebsites();
-  }, [fetchWebsites]);
+  }, []);
 
   const handleDeleteWebsite = async (websiteId) => {
     if (!window.confirm('Are you sure you want to delete this website?')) {

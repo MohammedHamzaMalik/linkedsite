@@ -4,6 +4,7 @@ const express = require('express');
 const axios = require('axios');
 const crypto = require('crypto');
 const session = require('express-session');
+const MongoStore = require('connect-mongo');
 const cors = require('cors');
 const { URL } = require('url');
 const mongoose = require('mongoose');
@@ -129,23 +130,31 @@ mongoose.connect(process.env.MONGODB_URI, {
 const app = express();
 
 // 8. Middleware
+// Update session configuration
 app.use(session({
-    secret: process.env.SESSION_SECRET || crypto.randomBytes(32).toString('hex'),
-    resave: true, // Changed to true
-    saveUninitialized: true, // Changed to true
-    name: 'sessionId', // Add explicit cookie name
-    cookie: {
-        secure: process.env.NODE_ENV === 'production',
-        httpOnly: true,
-        maxAge: 24 * 60 * 60 * 1000, // 24 hours
-        sameSite: 'lax' // Added sameSite policy
-    },
-    rolling: true // Refresh session on each request
+  secret: process.env.SESSION_SECRET,
+  resave: true, // Changed to true
+  saveUninitialized: true, // Changed to true
+  store: MongoStore.create({
+    mongoUrl: process.env.MONGODB_URI,
+    ttl: 24 * 60 * 60,
+    autoRemove: 'native',
+    touchAfter: 24 * 3600 // Only update the session every 24 hours
+  }),
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    maxAge: 24 * 60 * 60 * 1000,
+    httpOnly: true,
+    domain: process.env.NODE_ENV === 'production' ? '.onrender.com' : undefined
+  }
 }));
 
 app.use(cors({
-    origin: process.env.FRONTEND_URL,
-    credentials: true
+  origin: process.env.FRONTEND_URL,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
 app.use(rateLimit({
@@ -159,6 +168,13 @@ app.use(bodyParser);
 
 // Add after other middleware
 app.use(express.static('public'));
+
+// Add this before your routes
+app.use((req, res, next) => {
+  console.log('Session ID:', req.sessionID);
+  console.log('Session Data:', req.session);
+  next();
+});
 
 // 9. Helper Functions
 function generateState() {
@@ -217,8 +233,15 @@ async function getWebsiteHtml(websiteId) {
 
 // 10. Routes
 app.get('/auth/linkedin', (req, res) => {
-    const state = generateState();
-    req.session.state = state;
+  const state = generateState();
+  
+  // Save state to session and wait for it to be saved
+  req.session.state = state;
+  req.session.save((err) => {
+    if (err) {
+      console.error('Session save error:', err);
+      return res.status(500).json({ error: 'Failed to save session' });
+    }
     
     const authorizationUrl = new URL('https://www.linkedin.com/oauth/v2/authorization');
     authorizationUrl.searchParams.append('response_type', 'code');
@@ -227,23 +250,27 @@ app.get('/auth/linkedin', (req, res) => {
     authorizationUrl.searchParams.append('state', state);
     authorizationUrl.searchParams.append('scope', config.linkedinAuth.scope);
     
-    debug('Authorization URL', authorizationUrl.toString());
+    console.log('Generated state:', state);
+    console.log('Session ID:', req.sessionID);
+    
     res.redirect(authorizationUrl.toString());
+  });
 });
 
 // Modify the callback route to remove website generation
 app.get('/auth/linkedin/callback', async (req, res) => {
   try {
     const { code, state } = req.query;
+    
+    console.log('Callback Session ID:', req.sessionID);
+    console.log('Stored State:', req.session.state);
+    console.log('Received State:', state);
 
-    // Debug: Log state values
-    console.log('Received state:', state);
-    console.log('Session state:', req.session.state);
-
+    // More lenient state check for debugging
     if (state !== req.session.state) {
-      console.log('State mismatch, but continuing for now');
-      // We'll temporarily bypass this check for debugging
-      // return res.status(400).send('Invalid state parameter');
+      console.warn('State mismatch - Session might have been lost');
+      console.warn('Expected:', req.session.state);
+      console.warn('Received:', state);
     }
 
     // Get access token
@@ -266,29 +293,31 @@ app.get('/auth/linkedin/callback', async (req, res) => {
       throw new Error('Failed to fetch LinkedIn profile');
     }
 
-    // Store important data in session
-    req.session.linkedinAccessToken = accessToken;
-    req.session.linkedinId = profileData.sub;
-    req.session.userProfile = {
-      name: profileData.name,
-      email: profileData.email,
-      picture: profileData.picture
-    };
-
-    // Save session explicitly
-    req.session.save((err) => {
+    // Store session data
+    req.session.regenerate((err) => {
       if (err) {
-        console.error('Session save error:', err);
-        throw new Error('Failed to save session');
+        console.error('Session regeneration error:', err);
+        return res.redirect(`${process.env.FRONTEND_URL}?error=session_error`);
       }
-      
-      // Fixed redirect URL
-      const frontendUrl = process.env.NODE_ENV === 'production' 
-        ? 'https://linkedsite.onrender.com' // No port in production
-        : 'http://localhost:5173'; // Port only in development
-        
-      console.log('Redirecting to:', `${frontendUrl}/dashboard`);
-      res.redirect(`${frontendUrl}/dashboard`);
+
+      req.session.linkedinAccessToken = accessToken;
+      req.session.linkedinId = profileData.sub;
+      req.session.userProfile = {
+        name: profileData.name,
+        email: profileData.email,
+        picture: profileData.picture
+      };
+
+      req.session.save((err) => {
+        if (err) {
+          console.error('Session save error:', err);
+          return res.redirect(`${process.env.FRONTEND_URL}?error=session_error`);
+        }
+
+        const redirectUrl = `${process.env.FRONTEND_URL}/dashboard`;
+        console.log('Redirecting to:', redirectUrl);
+        res.redirect(redirectUrl);
+      });
     });
 
   } catch (error) {
@@ -766,11 +795,12 @@ app.get('*', (req, res) => {
 
 // 11. Error Handling
 app.use((err, req, res, next) => {
-    console.error('Server Error:', err);
-    res.status(500).json({
-        error: 'Internal Server Error',
-        message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
-    });
+  console.error('Server Error:', err);
+  res.status(500).json({
+    error: 'Internal Server Error',
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong',
+    sessionId: req.sessionID // Add for debugging
+  });
 });
 
 // 12. Start Server
