@@ -20,7 +20,6 @@ echo "Installing Vite and core dependencies..."
 npm install vite @vitejs/plugin-react --save
 
 echo "Installing frontend dependencies..."
-npx vite build
 npm install --legacy-peer-deps
 npm ci
 
