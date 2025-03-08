@@ -6,7 +6,7 @@ echo "NPM version: $(npm -v)"
 
 # Install root dependencies
 echo "Installing root dependencies..."
-npm ci
+npm ci --legacy-peer-deps
 
 echo "Moving to frontend directory..."
 cd frontend
