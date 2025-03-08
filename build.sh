@@ -12,7 +12,6 @@ echo "Moving to frontend directory..."
 cd frontend
 
 echo "Installing frontend dependencies..."
-export PATH="$PATH:./node_modules/.bin"
 npx vite build
 npm install --legacy-peer-deps
 npm ci
