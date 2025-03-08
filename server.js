@@ -30,6 +30,8 @@ const config = {
     }
 };
 
+const path = require('path');
+
 // 4. MongoDB Schema Definitions
 const websiteSchema = new mongoose.Schema({
   websiteId: {
@@ -737,6 +739,14 @@ app.get('/user/check-auth', (req, res) => {
   });
 });
 
+// Serve static files from the React/Vite frontend app build directory
+app.use(express.static(path.join(__dirname, 'frontend/dist')));
+
+// Catch all other routes and return the index.html file
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'frontend/dist', 'index.html'));
+});
+
 // 11. Error Handling
 app.use((err, req, res, next) => {
     console.error('Server Error:', err);
@@ -747,7 +757,7 @@ app.use((err, req, res, next) => {
 });
 
 // 12. Start Server
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
     console.log(`Server running on port ${PORT}`);
 });
