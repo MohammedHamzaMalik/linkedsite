@@ -284,7 +284,7 @@ app.get('/auth/linkedin/callback', async (req, res) => {
       
       // Fixed redirect URL
       const frontendUrl = process.env.NODE_ENV === 'production' 
-        ? `'https://linkedsite.onrender.com'` // No port in production
+        ? 'https://linkedsite.onrender.com' // No port in production
         : 'http://localhost:5173'; // Port only in development
         
       console.log('Redirecting to:', `${frontendUrl}/dashboard`);
