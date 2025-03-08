@@ -1,11 +1,16 @@
 #!/bin/bash
-# Install dependencies for main app
+
+echo "Installing root dependencies..."
 npm install
 
-# Install frontend dependencies and build
+echo "Moving to frontend directory..."
 cd frontend
-npm install
+
+echo "Installing frontend dependencies..."
+npm install --legacy-peer-deps
+
+echo "Building frontend..."
 npm run build
 
-# Return to root
+echo "Moving back to root..."
 cd ..
