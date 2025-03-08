@@ -15,6 +15,8 @@ const nodeHtmlToImage = require('node-html-to-image');
 const { generateAiEnhancedContent } = require('./utils/aiContentGenerator');
 const authMiddleware = require('./middleware/auth');
 
+const API_BASE_URL = "https://linkedsite.onrender.com"
+
 // 2. Debug helper
 const debug = (message, data) => {
     console.log(`DEBUG: ${message}`, data || '');
@@ -25,7 +27,7 @@ const config = {
     linkedinAuth: {
         clientId: process.env.CLIENT_ID,
         clientSecret: process.env.CLIENT_SECRET,
-        redirectUri: 'http://localhost:3000/auth/linkedin/callback',
+        redirectUri: `${API_BASE_URL}/auth/linkedin/callback`, // Update redirect URI
         scope: 'openid profile email'
     }
 };
@@ -273,13 +275,15 @@ app.get('/auth/linkedin/callback', async (req, res) => {
       }
       
       // Redirect to frontend
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      // change this code to use the api base url
+      c
+      const frontendUrl = process.env.FRONTEND_URL || `${API_BASE_URL}:5173`;
       res.redirect(`${frontendUrl}/dashboard`);
     });
 
   } catch (error) {
     console.error('LinkedIn callback error:', error);
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const frontendUrl = process.env.FRONTEND_URL || `${API_BASE_URL}:5173`;
     res.redirect(`${frontendUrl}?error=auth_failed`);
   }
 });
