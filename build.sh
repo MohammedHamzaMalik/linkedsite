@@ -8,9 +8,9 @@ echo "NPM version: $(npm -v)"
 echo "Installing Vite globally..."
 npm install -g vite
 
-# Set environment variable to skip Chromium download
-export PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
-export PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
+# # Set environment variable to skip Chromium download
+# export PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+# export PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
 
 # Install root dependencies
 echo "Installing root dependencies..."
