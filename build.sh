@@ -14,7 +14,7 @@ mkdir -p $PUPPETEER_CACHE_DIR
 
 # Force Puppeteer to install its bundled Chromium
 echo "Installing Puppeteer Chromium..."
-npx puppeteer install chrome-headless-shell
+npx puppeteer browsers install chrome-headless-shell
 
 echo "Puppeteer cache directory: $PUPPETEER_CACHE_DIR"
 ls -l $PUPPETEER_CACHE_DIR
