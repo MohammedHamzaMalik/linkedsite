@@ -655,6 +655,7 @@ app.post('/user/websites/generate', async (req, res) => {
       </html>
     `;
 
+    /*
     // Function to get Chrome executable path
     async function getChromePath() {
       // Try different possible locations
@@ -706,6 +707,10 @@ app.post('/user/websites/generate', async (req, res) => {
       },
       encoding: 'base64'
     });
+    */
+
+    // Use the new thumbnail generator
+    const thumbnail = await generateThumbnail(thumbnailHtml);
 
     // Create website with unique name and thumbnail
     const websiteId = await storeWebsite(
