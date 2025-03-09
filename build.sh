@@ -8,17 +8,9 @@ echo "NPM version: $(npm -v)"
 echo "Installing Vite globally..."
 npm install -g vite
 
-# Create and set Puppeteer cache directory
-export PUPPETEER_CACHE_DIR="$(pwd)/.cache/puppeteer"
-mkdir -p $PUPPETEER_CACHE_DIR
-echo "Created Puppeteer cache directory at: $PUPPETEER_CACHE_DIR"
-
-# Install Chromium first
-echo "Installing Chromium..."
-npm install puppeteer
-npx puppeteer browsers install chrome
-echo "Chromium installation completed"
-ls -la $PUPPETEER_CACHE_DIR
+# Set environment variable to skip Chromium download
+export PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
+export PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
 
 # Install root dependencies
 echo "Installing root dependencies..."
