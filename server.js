@@ -17,6 +17,7 @@ const { generateAiEnhancedContent } = require('./utils/aiContentGenerator');
 const authMiddleware = require('./middleware/auth');
 const puppeteer = require('puppeteer');
 const path = require('path');
+const { generateThumbnail } = require('./utils/thumbnailGenerator');
 
 const API_BASE_URL = "https://linkedsite.onrender.com"
 
