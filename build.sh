@@ -8,6 +8,14 @@ echo "NPM version: $(npm -v)"
 echo "Installing Vite globally..."
 npm install -g vite
 
+# Set Puppeteer cache directory inside your project so it persists in Render’s build cache.
+export PUPPETEER_CACHE_DIR=$(pwd)/.cache/puppeteer
+mkdir -p $PUPPETEER_CACHE_DIR
+
+# Force Puppeteer to install its bundled Chromium
+echo "Installing Puppeteer Chromium..."
+npx puppeteer install
+
 # Install root dependencies
 echo "Installing root dependencies..."
 npm ci --legacy-peer-deps
