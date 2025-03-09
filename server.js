@@ -646,7 +646,15 @@ app.post('/user/websites/generate', async (req, res) => {
           height: 630,
           deviceScaleFactor: 2
         },
-        args: ['--no-sandbox', '--disable-setuid-sandbox']
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--single-process'
+        ],
+        executablePath: process.env.NODE_ENV === 'production' 
+          ? '/usr/bin/google-chrome'
+          : null
       },
       encoding: 'base64'
     });
@@ -960,8 +968,9 @@ async function generatePersonalWebsite(profileData) {
           <p class="text-gray-500 text-sm">Please try again later or contact support if the issue persists.</p>
         </div>
       </body>
+
+
       </html>
     `;
   }
 }
-
