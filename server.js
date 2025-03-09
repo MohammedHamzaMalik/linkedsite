@@ -655,6 +655,34 @@ app.post('/user/websites/generate', async (req, res) => {
       </html>
     `;
 
+    // Function to get Chrome executable path
+    async function getChromePath() {
+      // Try different possible locations
+      const possiblePaths = [
+        '/usr/bin/google-chrome-stable',
+        '/usr/bin/google-chrome',
+        '/usr/bin/chromium-browser',
+        '/usr/bin/chromium'
+      ];
+      
+      for (const path of possiblePaths) {
+        try {
+          const { execSync } = require('child_process');
+          execSync(`${path} --version`);
+          console.log(`Found Chrome at: ${path}`);
+          return path;
+        } catch (e) {
+          console.log(`Chrome not found at ${path}`);
+        }
+      }
+      
+      // If we can't find Chrome, let Puppeteer try to find it
+      return undefined;
+    }
+
+    const chromePath = await getChromePath();
+    console.log(`Using Chrome path: ${chromePath || 'Puppeteer default'}`);
+  
     const thumbnail = await nodeHtmlToImage({
       html: thumbnailHtml,
       quality: 100,
@@ -674,7 +702,7 @@ app.post('/user/websites/generate', async (req, res) => {
         // executablePath: process.env.NODE_ENV === 'production' 
         //   ? path.join(process.cwd(), '.cache', 'puppeteer', 'chrome', 'linux-134.0.6998.35', 'chrome-linux64', 'chrome')
         //   : undefined
-        executablePath: '/usr/bin/google-chrome-stable'  // Use the system Chrome we installed
+        executablePath: chromePath  // Use the system Chrome we installed
       },
       encoding: 'base64'
     });
