@@ -13,27 +13,42 @@ async function generateThumbnail(htmlContent) {
         '--disable-gpu'
       ],
       headless: 'new',
-      // Let Puppeteer find Chrome automatically
     });
 
     // Create a new page
     const page = await browser.newPage();
     
-    // Set viewport
+    // Set viewport to match the desired thumbnail dimensions
     await page.setViewport({
       width: 1200,
       height: 630,
-      deviceScaleFactor: 2
+      deviceScaleFactor: 1 // Set to 1 for clearer rendering
     });
 
-    // Set content
-    await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+    // Set content and wait for rendering
+    await page.setContent(htmlContent, { 
+      waitUntil: 'networkidle0',
+      timeout: 30000
+    });
 
-    // Take screenshot
+    // Make sure everything is properly laid out
+    await page.evaluate(() => {
+      // Force layout if needed
+      document.body.style.width = '1200px';
+      document.body.style.height = '630px';
+    });
+
+    // Take screenshot with exact dimensions
     const screenshot = await page.screenshot({
       type: 'jpeg',
       quality: 100,
-      encoding: 'base64'
+      encoding: 'base64',
+      clip: {
+        x: 0,
+        y: 0,
+        width: 1200,
+        height: 630
+      }
     });
 
     return screenshot;
