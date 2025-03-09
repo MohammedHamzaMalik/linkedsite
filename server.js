@@ -16,6 +16,8 @@ const nodeHtmlToImage = require('node-html-to-image');
 const { generateAiEnhancedContent } = require('./utils/aiContentGenerator');
 const authMiddleware = require('./middleware/auth');
 
+app.set('trust proxy', 1);
+
 const API_BASE_URL = "https://linkedsite.onrender.com"
 
 // 2. Debug helper
