@@ -671,9 +671,10 @@ app.post('/user/websites/generate', async (req, res) => {
           '--disable-dev-shm-usage',
           '--single-process'
         ],
-        executablePath: process.env.NODE_ENV === 'production' 
-          ? path.join(process.cwd(), '.cache', 'puppeteer', 'chrome', 'linux-134.0.6998.35', 'chrome-linux64', 'chrome')
-          : undefined
+        // executablePath: process.env.NODE_ENV === 'production' 
+        //   ? path.join(process.cwd(), '.cache', 'puppeteer', 'chrome', 'linux-134.0.6998.35', 'chrome-linux64', 'chrome')
+        //   : undefined
+        executablePath: '/usr/bin/google-chrome-stable'  // Use the system Chrome we installed
       },
       encoding: 'base64'
     });
