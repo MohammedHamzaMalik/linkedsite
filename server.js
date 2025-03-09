@@ -15,6 +15,8 @@ require('dotenv').config();
 const nodeHtmlToImage = require('node-html-to-image');
 const { generateAiEnhancedContent } = require('./utils/aiContentGenerator');
 const authMiddleware = require('./middleware/auth');
+const puppeteer = require('puppeteer');
+const path = require('path');
 
 const API_BASE_URL = "https://linkedsite.onrender.com"
 
@@ -34,8 +36,6 @@ const config = {
         scope: 'openid profile email'
     }
 };
-
-const path = require('path');
 
 // 4. MongoDB Schema Definitions
 const websiteSchema = new mongoose.Schema({
@@ -243,6 +243,25 @@ async function getWebsiteHtml(websiteId) {
         console.error('Error retrieving website:', error);
         throw error;
     }
+}
+
+// Add this helper function
+async function getBrowser() {
+  const options = {
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--single-process'
+    ],
+    headless: 'new'
+  };
+
+  if (process.env.NODE_ENV === 'production') {
+    options.executablePath = path.join(process.cwd(), '.cache', 'puppeteer', 'chrome', 'linux-114.0.5735.90', 'chrome-linux64', 'chrome');
+  }
+
+  return puppeteer.launch(options);
 }
 
 // 10. Routes
@@ -652,9 +671,9 @@ app.post('/user/websites/generate', async (req, res) => {
           '--disable-dev-shm-usage',
           '--single-process'
         ],
-        // executablePath: process.env.NODE_ENV === 'production' 
-        //   ? '/usr/bin/google-chrome'
-        //   : null
+        executablePath: process.env.NODE_ENV === 'production' 
+          ? path.join(process.cwd(), '.cache', 'puppeteer', 'chrome', 'linux-114.0.5735.90', 'chrome-linux64', 'chrome')
+          : undefined
       },
       encoding: 'base64'
     });
