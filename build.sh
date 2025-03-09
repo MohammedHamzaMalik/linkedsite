@@ -9,12 +9,15 @@ echo "Installing Vite globally..."
 npm install -g vite
 
 # Set Puppeteer cache directory inside your project so it persists in Render’s build cache.
-export PUPPETEER_CACHE_DIR=$(pwd)/.cache/puppeteer
+export PUPPETEER_CACHE_DIR=/opt/render/project/.cache/puppeteer
 mkdir -p $PUPPETEER_CACHE_DIR
 
 # Force Puppeteer to install its bundled Chromium
 echo "Installing Puppeteer Chromium..."
-npx puppeteer install
+npx puppeteer install chrome-headless-shell
+
+echo "Puppeteer cache directory: $PUPPETEER_CACHE_DIR"
+ls -l $PUPPETEER_CACHE_DIR
 
 # Install root dependencies
 echo "Installing root dependencies..."
