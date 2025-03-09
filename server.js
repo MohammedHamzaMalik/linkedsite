@@ -652,9 +652,9 @@ app.post('/user/websites/generate', async (req, res) => {
           '--disable-dev-shm-usage',
           '--single-process'
         ],
-        executablePath: process.env.NODE_ENV === 'production' 
-          ? '/usr/bin/google-chrome'
-          : null
+        // executablePath: process.env.NODE_ENV === 'production' 
+        //   ? '/usr/bin/google-chrome'
+        //   : null
       },
       encoding: 'base64'
     });
