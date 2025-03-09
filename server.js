@@ -634,6 +634,41 @@ app.post('/user/websites/generate', async (req, res) => {
     // Generate website HTML
     const websiteHtml = await generatePersonalWebsite(profileData);
     
+    // Generate thumbnail with proper dimensions and styling
+    const thumbnailHtml = `
+    <html>
+      <head>
+        <style>
+          body {
+            width: 1200px;
+            height: 630px;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            background-color: #ffffff;
+          }
+          .thumbnail-container {
+            width: 1200px;
+            height: 630px;
+            position: relative;
+            overflow: hidden;
+          }
+          /* Extract and include original styles but remove any conflicting width/height/scaling */
+          ${websiteHtml.match(/<style>(.*?)<\/style>/s)?.[1] || ''}
+        </style>
+      </head>
+      <body>
+        <div class="thumbnail-container">
+          ${websiteHtml.replace(/<style>.*?<\/style>/s, '').replace(/<html>|<\/html>|<body>|<\/body>|<head>|<\/head>/g, '')}
+        </div>
+      </body>
+    </html>
+    `;
+
+    /*
     // Generate thumbnail with specific dimensions and styling
     const thumbnailHtml = `
       <html>
@@ -656,7 +691,6 @@ app.post('/user/websites/generate', async (req, res) => {
       </html>
     `;
 
-    /*
     // Function to get Chrome executable path
     async function getChromePath() {
       // Try different possible locations
