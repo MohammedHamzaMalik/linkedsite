@@ -41,11 +41,11 @@ function Home() {
               <FaGithub size={24} />
             </a>
             <a
-              href="https://www.linkedin.com/in/mohammed-hamza-malik/"
+              href="https://www.linkedin.com/company/linkedsite/"
               target="_blank"
               rel="noopener noreferrer"
               className="text-[#0077b5] hover:text-[#0a66c2]"
-              title="Connect on LinkedIn"
+              title="Follow on LinkedIn"
             >
               <FaLinkedin size={24} />
             </a>
