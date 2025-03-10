@@ -1,0 +1,16 @@
+<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="techGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#007BFF"/>
+      <stop offset="100%" stop-color="#00D1B2"/>
+    </linearGradient>
+  </defs>
+  <!-- Three nodes arranged as an equilateral triangle -->
+  <circle cx="100" cy="50" r="6" fill="url(#techGradient)" />
+  <circle cx="60" cy="140" r="6" fill="url(#techGradient)" />
+  <circle cx="140" cy="140" r="6" fill="url(#techGradient)" />
+  <!-- Connecting lines between nodes -->
+  <line x1="100" y1="50" x2="60" y2="140" stroke="url(#techGradient)" stroke-width="2" stroke-linecap="round" />
+  <line x1="100" y1="50" x2="140" y2="140" stroke="url(#techGradient)" stroke-width="2" stroke-linecap="round" />
+  <line x1="60" y1="140" x2="140" y2="140" stroke="url(#techGradient)" stroke-width="2" stroke-linecap="round" />
+</svg>
