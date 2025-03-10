@@ -265,6 +265,34 @@ async function getBrowser() {
   return puppeteer.launch(options);
 }
 
+// Add helper function to validate token
+async function validateToken(userId) {
+  const token = await Token.findOne({ userId });
+  if (!token) return false;
+  
+  return new Date() < token.expiresAt;
+}
+
+// Add middleware to check token validity
+async function tokenValidator(req, res, next) {
+  if (!req.session.linkedinId) {
+    return res.status(401).json({
+      error: 'Unauthorized',
+      message: 'Please login first'
+    });
+  }
+
+  const isValid = await validateToken(req.session.linkedinId);
+  if (!isValid) {
+    return res.status(401).json({
+      error: 'Token expired',
+      message: 'Please login again'
+    });
+  }
+
+  next();
+}
+
 // 10. Routes
 // Update the LinkedIn auth route
 app.get('/auth/linkedin', async (req, res) => {
@@ -300,7 +328,7 @@ app.get('/auth/linkedin', async (req, res) => {
   }
 });
 
-// Update the callback route
+// Update the callback route to store user and token data
 app.get('/auth/linkedin/callback', async (req, res) => {
   try {
     const { code, state } = req.query;
@@ -333,7 +361,36 @@ app.get('/auth/linkedin/callback', async (req, res) => {
       throw new Error('Failed to fetch LinkedIn profile');
     }
 
-    // Update session data
+    // Calculate token expiration (1 hour from now)
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 1);
+
+    // Create or update user
+    let user = await User.findOne({ linkedinId: profileData.sub });
+    
+    if (!user) {
+      user = new User({
+        linkedinId: profileData.sub,
+        name: profileData.name,
+        email: profileData.email
+      });
+    } else {
+      user.name = profileData.name;
+      user.email = profileData.email;
+    }
+    await user.save();
+
+    // Store token
+    await Token.findOneAndUpdate(
+      { userId: profileData.sub },
+      {
+        accessToken,
+        expiresAt
+      },
+      { upsert: true, new: true }
+    );
+
+    // Update session
     req.session.linkedinAccessToken = accessToken;
     req.session.linkedinId = profileData.sub;
     req.session.userProfile = {
@@ -342,7 +399,6 @@ app.get('/auth/linkedin/callback', async (req, res) => {
       picture: profileData.picture
     };
 
-    // Save session explicitly
     await new Promise((resolve, reject) => {
       req.session.save((err) => {
         if (err) reject(err);
@@ -593,7 +649,7 @@ app.put('/user/websites/:websiteId', async (req, res) => {
   }
 });
 
-// Update the website generation route
+// Update the website generation route to link with user
 app.post('/user/websites/generate', async (req, res) => {
   try {
     if (!req.session.linkedinAccessToken) {
@@ -609,6 +665,15 @@ app.post('/user/websites/generate', async (req, res) => {
       return res.status(401).json({ 
         error: 'Invalid profile',
         message: 'Could not fetch LinkedIn profile'
+      });
+    }
+
+    // Find user
+    const user = await User.findOne({ linkedinId: profileData.sub });
+    if (!user) {
+      return res.status(401).json({
+        error: 'User not found',
+        message: 'Please login again'
       });
     }
 
@@ -755,6 +820,10 @@ app.post('/user/websites/generate', async (req, res) => {
       websiteName
     );
 
+    // Add website reference to user
+    user.websites.push(websiteId);
+    await user.save();
+
     res.json({ websiteId, websiteName });
 
   } catch (error) {
@@ -896,6 +965,9 @@ app.use(express.static(path.join(__dirname, 'frontend/dist')));
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'frontend/dist', 'index.html'));
 });
+
+// Update other routes to use token validation
+app.use('/user/*', tokenValidator);
 
 // 11. Error Handling
 app.use((err, req, res, next) => {
