@@ -30,7 +30,7 @@
     "express-rate-limit": "^7.5.0",
     "express-session": "^1.18.1",
     "helmet": "^8.0.0",
-    "langchain": "^0.3.19",
+    "langchain": "^0.3.37",
     "mongoose": "^8.10.2",
     "node-html-to-image": "^5.0.0",
     "puppeteer": "^24.4.0",
