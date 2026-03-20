@@ -20,7 +20,7 @@
     "@huggingface/inference": "^2.8.1",
     "@langchain/community": "^0.3.34",
     "@langchain/core": "^0.3.80",
-    "axios": "^1.7.9",
+    "axios": "^1.13.6",
     "connect-mongo": "^5.1.0",
     "cors": "^2.8.5",
     "crypto": "^1.0.1",
